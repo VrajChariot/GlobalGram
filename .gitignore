@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# MediaPipe assets (scripts/setup-mediapipe.mjs)
+public/mediapipe
+
+# Debug landmark recordings (D → R)
+landmarks-*.json

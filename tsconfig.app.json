@@ -6,6 +6,7 @@
     "module": "esnext",
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
+    "types": ["vite/client", "vite-plugin-glsl/ext"],
 
     /* Bundler mode */
     "moduleResolution": "bundler",
@@ -16,6 +17,7 @@
     "jsx": "react-jsx",
 
     /* Linting */
+    "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
