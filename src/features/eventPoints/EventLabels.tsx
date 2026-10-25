@@ -25,7 +25,7 @@ export function EventLabels() {
     () =>
       addAfterEffect(() => {
         const { clusters, screen, events } = useEventStore.getState()
-        const { hoveredId } = useSelectionStore.getState()
+        const { hoveredId, selectedId } = useSelectionStore.getState()
         const count = Math.min(screen.count, clusters.length)
 
         let used = 0
@@ -41,7 +41,8 @@ export function EventLabels() {
 
         const label = hover.current
         if (!label) return
-        if (hoveredIndex < 0 || !screen.visible[hoveredIndex]) {
+        // The info panel already shows the selected event's title.
+        if (hoveredIndex < 0 || !screen.visible[hoveredIndex] || hoveredId === selectedId) {
           hide(label)
           return
         }

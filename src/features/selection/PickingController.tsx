@@ -1,7 +1,7 @@
-import { usePointerPicking } from './usePointerPicking'
+import { useMagneticPicking } from './useMagneticPicking'
 
 /** Hosts picking inside the Canvas render loop; renders nothing. */
 export function PickingController() {
-  usePointerPicking()
+  useMagneticPicking()
   return null
 }

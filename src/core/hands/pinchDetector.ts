@@ -54,3 +54,14 @@ export function stepPinch(d: PinchDetector, distance: number, time: number): Pin
   const follow = dt === Infinity ? 1 : 1 - Math.exp(-dt / REST_TAU_MS)
   return { ...d, rest: d.rest + (distance - d.rest) * follow, lastTime: time }
 }
+
+/**
+ * How far the fingers have closed towards a pinch: 0 at rest, 1 at the start
+ * threshold (and while pinching). Drives the reticle's fill ring.
+ */
+export function pinchProgress(d: PinchDetector, distance: number): number {
+  if (d.pinching) return 1
+  const start = pinchStartThreshold(d)
+  if (d.rest <= start) return 0
+  return Math.min(1, Math.max(0, (d.rest - distance) / (d.rest - start)))
+}

@@ -1,8 +1,9 @@
 import { distanceToSplit, splitAngle, type Cluster } from '../../core/clustering/screenClusters'
+import type { GlobeEvent } from '../../core/events/GlobeEvent'
 import { vectorToLatLng, writeLatLngToArray } from '../../core/geo/latLngToVector'
 import { ZERO_VELOCITY } from '../../core/motion/inertia'
 import { clampDistance, orientationFacing } from '../../core/motion/orbit'
-import type { GlobeEvent } from '../../core/events/GlobeEvent'
+import { gestureConfig } from '../../shared/config/gestureConfig'
 import { CAMERA_FOV, visualConfig } from '../../shared/config/visualConfig'
 import { useEventStore } from '../../store/eventStore'
 import { useGlobeStore } from '../../store/globeStore'
@@ -11,19 +12,42 @@ import { useSelectionStore } from '../../store/selectionStore'
 
 /** Selecting a cluster always zooms in at least this much. */
 const MIN_FOCUS_ZOOM = 0.9
+/**
+ * A selected event is turned this far left of centre (degrees of longitude),
+ * so it sits centre-left and the info panel on the right never covers it.
+ */
+const SELECTED_OFFSET_DEG = 20
 
-/** Select what's hovered: a single event is selected, a cluster is zoomed into until it splits. */
+/** Select what's hovered: a single event is selected (and turned centre-left), a cluster is zoomed into until it splits. */
 export function selectHovered(): void {
   const { hoveredId, setSelectedId } = useSelectionStore.getState()
   if (!hoveredId) return
   const { clusters, events } = useEventStore.getState()
   const cluster = clusters.find((c) => events[c.representative].id === hoveredId)
-  if (cluster && cluster.members.length > 1) focusCluster(cluster, events)
-  else setSelectedId(hoveredId)
+  if (cluster && cluster.members.length > 1) {
+    focusCluster(cluster, events)
+    return
+  }
+  setSelectedId(hoveredId)
+  const event = events.find((e) => e.id === hoveredId)
+  if (event) turnTo(event.lat, event.lng + SELECTED_OFFSET_DEG)
+}
+
+/** A pinch-tap selects only in pinch mode; dwell mode selects by holding still instead. */
+export function selectHoveredByPinch(): void {
+  if (gestureConfig.selection.mode === 'pinch') selectHovered()
 }
 
 export function clearSelection(): void {
   useSelectionStore.getState().setSelectedId(null)
+}
+
+function turnTo(lat: number, lng: number): void {
+  const globe = useGlobeStore.getState()
+  const target = orientationFacing(lat, lng, globe.yaw)
+  globe.setVelocity(ZERO_VELOCITY)
+  globe.setOrientation(target.yaw, target.pitch)
+  globe.setLastInputAt(performance.now())
 }
 
 /** Turns the cluster's centre to face the camera and zooms in far enough to split it. */
@@ -46,10 +70,7 @@ function focusCluster(cluster: Cluster, events: GlobeEvent[]): void {
   const { height } = useProjectionStore.getState()
   const globe = useGlobeStore.getState()
   const splitAt = distanceToSplit(angle, visualConfig.eventPoints.clusterRadiusPx, CAMERA_FOV, height)
-  const target = orientationFacing(centre.lat, centre.lng, globe.yaw)
 
-  globe.setVelocity(ZERO_VELOCITY)
-  globe.setOrientation(target.yaw, target.pitch)
+  turnTo(centre.lat, centre.lng)
   globe.setDistance(clampDistance(Math.min(globe.distance * MIN_FOCUS_ZOOM, splitAt)))
-  globe.setLastInputAt(performance.now())
 }

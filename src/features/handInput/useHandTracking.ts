@@ -5,11 +5,12 @@ import { computeHandFeatures, cursorPoint, pinchDistance, velocityBetween, type 
 import { assignHandSlots, type HandSlot } from '../../core/hands/handSlots'
 import { interactionBoxScale, interactionBoxToView } from '../../core/hands/interactionBox'
 import { HandLandmarkFilter } from '../../core/hands/oneEuroFilter'
-import { INITIAL_PINCH, stepPinch } from '../../core/hands/pinchDetector'
+import { INITIAL_PINCH, pinchProgress, stepPinch } from '../../core/hands/pinchDetector'
 import { HandTrackerClient, type HandTrackerResult } from '../../infrastructure/handTracking/HandTrackerClient'
 import { gestureConfig } from '../../shared/config/gestureConfig'
 import { useGestureStore } from '../../store/gestureStore'
 import { useHandStore } from '../../store/handStore'
+import { useReplayStore } from '../../store/replayStore'
 
 const FPS_WINDOW_MS = 1000
 
@@ -35,7 +36,8 @@ export function useHandTracking(videoRef: RefObject<HTMLVideoElement | null>): v
     const process = (result: HandTrackerResult) => {
       const now = performance.now()
       const video = videoRef.current
-      const videoSize = { width: video?.videoWidth || 1280, height: video?.videoHeight || 720 }
+      const replay = useReplayStore.getState()
+      const videoSize = replay.active ? replay.video : { width: video?.videoWidth || 1280, height: video?.videoHeight || 720 }
       const view = { width: window.innerWidth, height: window.innerHeight }
       const boxFraction = gestureConfig.interaction.boxFraction
 
@@ -102,11 +104,23 @@ export function useHandTracking(videoRef: RefObject<HTMLVideoElement | null>): v
       lastSeenAt = now
 
       store.setVideoSize(videoSize.width, videoSize.height)
-      store.setHands(raw, filtered, { features, pinching, cursor, pinchPoint: toView(features.pinchPoint), velocity }, secondary, now)
+      store.setHands(
+        raw,
+        filtered,
+        { features, pinching, pinchProgress: pinchProgress(pinch, features.pinchDist), cursor, pinchPoint: toView(features.pinchPoint), velocity },
+        secondary,
+        now,
+      )
       useGestureStore.getState().setCursor({ ...cursor, source: 'hand' })
     }
 
-    client.onResult = process
+    // While a recording replays, its frames stand in for the camera's.
+    client.onResult = (result) => {
+      if (!useReplayStore.getState().active) process(result)
+    }
+    const stopReplayFeed = useReplayStore.subscribe((replay, previous) => {
+      if (replay.frame && replay.frame !== previous.frame) process(replay.frame)
+    })
     client.onError = (message) => console.warn('hand tracker:', message)
     store.setStatus('loading')
     client
@@ -124,7 +138,8 @@ export function useHandTracking(videoRef: RefObject<HTMLVideoElement | null>): v
     const pump = () => {
       if (cancelled) return
       const video = videoRef.current
-      if (video && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) void client.submit(video)
+      const live = !useReplayStore.getState().active
+      if (live && video && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) void client.submit(video)
       if (video && 'requestVideoFrameCallback' in video) video.requestVideoFrameCallback(pump)
       else requestAnimationFrame(pump)
     }
@@ -132,6 +147,7 @@ export function useHandTracking(videoRef: RefObject<HTMLVideoElement | null>): v
 
     return () => {
       cancelled = true
+      stopReplayFeed()
       client.dispose()
       store.setStatus('idle')
       store.setHands([], [], null, null, 0)

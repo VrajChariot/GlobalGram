@@ -8,6 +8,8 @@ type TrackerStatus = 'idle' | 'loading' | 'ready' | 'error'
 export type PrimaryHand = {
   features: HandFeatures
   pinching: boolean
+  /** 0 at rest → 1 as the fingers close to a pinch. */
+  pinchProgress: number
   /** Cursor in viewport CSS px (after the interaction box). */
   cursor: Point
   /** Thumb–index midpoint in viewport CSS px. */

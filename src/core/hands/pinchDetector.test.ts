@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { INITIAL_PINCH, pinchEndThreshold, pinchStartThreshold, stepPinch, type PinchDetector } from './pinchDetector'
+import { INITIAL_PINCH, pinchEndThreshold, pinchProgress, pinchStartThreshold, stepPinch, type PinchDetector } from './pinchDetector'
 
 const FRAME = 80
 
@@ -76,5 +76,19 @@ describe('thresholds', () => {
 
   it('the first sample sets the resting distance', () => {
     expect(stepPinch(INITIAL_PINCH, 0.7, 0).rest).toBe(0.7)
+  })
+})
+
+describe('pinchProgress', () => {
+  it('fills from rest (0) to the start threshold (1)', () => {
+    const d = settled(0.65) // start threshold 0.25
+    expect(pinchProgress(d, 0.65)).toBeCloseTo(0)
+    expect(pinchProgress(d, 0.45)).toBeCloseTo(0.5, 1)
+    expect(pinchProgress(d, 0.2)).toBe(1)
+    expect(pinchProgress(d, 0.9)).toBe(0)
+  })
+
+  it('is full while pinching', () => {
+    expect(pinchProgress({ ...settled(0.65), pinching: true, tightest: 0.1 }, 0.3)).toBe(1)
   })
 })

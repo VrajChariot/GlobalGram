@@ -10,10 +10,11 @@ import { GlobeScene } from '../features/globe/GlobeScene'
 import { useGestureController } from '../features/handInput/useGestureController'
 import { useHandTracking } from '../features/handInput/useHandTracking'
 import { useMouseFallback } from '../features/handInput/useMouseFallback'
+import { InfoPanel } from '../features/infoPanel/InfoPanel'
 import { Effects } from '../features/postprocessing/Effects'
 import { PickingController } from '../features/selection/PickingController'
 import { Reticle } from '../features/selection/Reticle'
-import { clearSelection, selectHovered } from '../features/selection/selectionActions'
+import { clearSelection, selectHovered, selectHoveredByPinch } from '../features/selection/selectionActions'
 import { MockEventSource } from '../infrastructure/events/MockEventSource'
 import { CAMERA_FOV } from '../shared/config/visualConfig'
 import { useRenderDpr } from './useRenderDpr'
@@ -29,7 +30,7 @@ export function App() {
   const dpr = useRenderDpr()
   useEventFeed(eventSource)
   useHandTracking(video)
-  useGestureController({ onSelect: selectHovered, onOpenPalm: clearSelection })
+  useGestureController({ onSelect: selectHoveredByPinch, onOpenPalm: clearSelection })
   useMouseFallback(canvasLayer, { onTap: selectHovered, onEscape: clearSelection })
 
   return (
@@ -55,6 +56,7 @@ export function App() {
 
       <div className="pointer-events-none absolute inset-0">
         <EventLabels />
+        <InfoPanel onClose={clearSelection} />
         <Reticle />
         <DebugOverlay />
       </div>

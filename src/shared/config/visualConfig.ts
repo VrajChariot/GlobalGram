@@ -58,6 +58,16 @@ export const visualConfig = {
     /** Screen radius within which beams merge into a cluster. */
     clusterRadiusPx: 36,
   },
+  /** Emitter plate under the globe. */
+  projectionRing: {
+    intensity: 0.8,
+    /** Plate height (globe radius 1); fixed at mount. */
+    y: -1.15,
+    particleOpacity: 0.55,
+    particleSize: 0.012,
+    /** How high particles rise before fading. */
+    particleRise: 0.9,
+  },
   /** Pin (beam) heights in globe radii; changes re-cluster and animate. */
   pinHeights: {
     base: 0.025,
@@ -86,6 +96,8 @@ export const LAND_POINT_COUNT = 40_000
 export const LAND_MASK_URL = '/land-mask.png'
 export const GRATICULE_STEP_DEG = 15
 export const ATMOSPHERE_RADIUS = 1.12
+/** The globe sits this far above the view centre, leaving room for the projection ring below. */
+export const GLOBE_LIFT = 0.1
 /** Vertical field of view in degrees. */
 export const CAMERA_FOV = 45
 
@@ -160,6 +172,17 @@ export function useVisualConfigControls(): void {
       ringSize: { min: 0.002, max: 0.05, step: 0.001 },
       ringOpacity: { min: 0, max: 1 },
       clusterRadiusPx: { min: 0, max: 80, step: 1 },
+    }),
+    { collapsed: true },
+  )
+  useControls(
+    'Projection ring',
+    bindSection(visualConfig.projectionRing, {
+      intensity: { min: 0, max: 3 },
+      y: { min: -2, max: -1, step: 0.01 },
+      particleOpacity: { min: 0, max: 1 },
+      particleSize: { min: 0.002, max: 0.04, step: 0.001 },
+      particleRise: { min: 0.1, max: 2 },
     }),
     { collapsed: true },
   )

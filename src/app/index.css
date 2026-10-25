@@ -8,3 +8,37 @@ body,
   background: #000;
   overflow: hidden;
 }
+
+/* Leader line draws itself in from the selected point. */
+@keyframes leader-draw {
+  from {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Info panel: content rises in after the card scales out. */
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Scan line sweeping the empty image slot. */
+@keyframes scan-sweep {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(400%);
+  }
+}

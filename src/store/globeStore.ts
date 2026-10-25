@@ -22,7 +22,7 @@ type GlobeState = {
 export const useGlobeStore = create<GlobeState>()((set) => ({
   yaw: 0.6,
   pitch: 0.25,
-  distance: 2.8,
+  distance: 3.0,
   velocity: ZERO_VELOCITY,
   isDragging: false,
   lastInputAt: 0,
