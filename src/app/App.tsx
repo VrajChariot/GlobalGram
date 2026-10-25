@@ -7,6 +7,7 @@ import { EventLabels } from '../features/eventPoints/EventLabels'
 import { EventPoints } from '../features/eventPoints/EventPoints'
 import { useEventFeed } from '../features/eventPoints/useEventFeed'
 import { GlobeScene } from '../features/globe/GlobeScene'
+import { useGestureController } from '../features/handInput/useGestureController'
 import { useHandTracking } from '../features/handInput/useHandTracking'
 import { useMouseFallback } from '../features/handInput/useMouseFallback'
 import { Effects } from '../features/postprocessing/Effects'
@@ -28,6 +29,7 @@ export function App() {
   const dpr = useRenderDpr()
   useEventFeed(eventSource)
   useHandTracking(video)
+  useGestureController({ onSelect: selectHovered, onOpenPalm: clearSelection })
   useMouseFallback(canvasLayer, { onTap: selectHovered, onEscape: clearSelection })
 
   return (

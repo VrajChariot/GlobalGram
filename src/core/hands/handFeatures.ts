@@ -1,9 +1,11 @@
-import { PINCH_END, PINCH_START } from '../gestures/thresholds'
 import { FINGERTIPS, LANDMARK, type Landmark, type TrackedHand } from './HandFrame'
 
-/** Mean fingertip-to-wrist distance (in palm lengths) of a fist and of a flat open hand. */
+/**
+ * Mean fingertip-to-wrist distance (in palm lengths) of a fist and of a flat
+ * open hand. Calibrated on a real hand: fist ≈ 0.93–1.08, flat palm ≈ 1.64.
+ */
 const FIST_REACH = 1.0
-const OPEN_REACH = 1.9
+const OPEN_REACH = 1.62
 
 export type Point = { x: number; y: number }
 
@@ -26,6 +28,12 @@ function distance(a: Landmark, b: Landmark, aspect: number): number {
   return Math.hypot((a.x - b.x) * aspect, a.y - b.y, (a.z - b.z) * aspect)
 }
 
+/** Thumb-tip to index-tip distance in palm lengths. */
+export function pinchDistance(hand: TrackedHand, aspect: number): number {
+  const l = hand.landmarks
+  return distance(l[LANDMARK.THUMB_TIP], l[LANDMARK.INDEX_TIP], aspect) / Math.max(distance(l[LANDMARK.WRIST], l[LANDMARK.MIDDLE_MCP], aspect), 1e-6)
+}
+
 export function computeHandFeatures(hand: TrackedHand, aspect: number): HandFeatures {
   const l = hand.landmarks
   const palm = Math.max(distance(l[LANDMARK.WRIST], l[LANDMARK.MIDDLE_MCP], aspect), 1e-6)
@@ -38,11 +46,6 @@ export function computeHandFeatures(hand: TrackedHand, aspect: number): HandFeat
     pinchPoint: { x: (thumb.x + index.x) / 2, y: (thumb.y + index.y) / 2 },
     indexTip: { x: index.x, y: index.y },
   }
-}
-
-/** Pinch state with hysteresis: starts below PINCH_START, ends above PINCH_END. */
-export function updatePinching(wasPinching: boolean, pinchDist: number): boolean {
-  return wasPinching ? pinchDist <= PINCH_END : pinchDist < PINCH_START
 }
 
 /** The pinch midpoint while pinching (so the cursor doesn't jump on pinch), else the index tip. */

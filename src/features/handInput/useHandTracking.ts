@@ -1,10 +1,11 @@
 import { useEffect, type RefObject } from 'react'
 import { HAND_LOSS_MS } from '../../core/gestures/thresholds'
 import { mirrorHand } from '../../core/hands/HandFrame'
-import { computeHandFeatures, cursorPoint, updatePinching, velocityBetween, type Point } from '../../core/hands/handFeatures'
+import { computeHandFeatures, cursorPoint, pinchDistance, velocityBetween, type Point } from '../../core/hands/handFeatures'
 import { assignHandSlots, type HandSlot } from '../../core/hands/handSlots'
 import { interactionBoxScale, interactionBoxToView } from '../../core/hands/interactionBox'
 import { HandLandmarkFilter } from '../../core/hands/oneEuroFilter'
+import { INITIAL_PINCH, stepPinch } from '../../core/hands/pinchDetector'
 import { HandTrackerClient, type HandTrackerResult } from '../../infrastructure/handTracking/HandTrackerClient'
 import { gestureConfig } from '../../shared/config/gestureConfig'
 import { useGestureStore } from '../../store/gestureStore'
@@ -23,7 +24,7 @@ export function useHandTracking(videoRef: RefObject<HTMLVideoElement | null>): v
     const filter = new HandLandmarkFilter()
     const store = useHandStore.getState()
     let cancelled = false
-    let pinching = false
+    let pinch = INITIAL_PINCH
     let slots: HandSlot[] = []
     let nextSlotId = 0
     let primaryId = -1
@@ -51,9 +52,9 @@ export function useHandTracking(videoRef: RefObject<HTMLVideoElement | null>): v
           filter.retain([])
           slots = []
           primaryId = -1
-          pinching = false
+          pinch = INITIAL_PINCH
           previousCursor = null
-          store.setHands([], [], null, lastSeenAt)
+          store.setHands([], [], null, null, lastSeenAt)
           if (useGestureStore.getState().cursor?.source === 'hand') useGestureStore.getState().setCursor(null)
         }
         return
@@ -75,15 +76,25 @@ export function useHandTracking(videoRef: RefObject<HTMLVideoElement | null>): v
       if (primaryIndex < 0) {
         primaryIndex = 0
         primaryId = assigned.ids[0]
-        pinching = false
+        pinch = INITIAL_PINCH
         previousCursor = null
       }
       const primary = filtered[primaryIndex]
 
-      const features = computeHandFeatures(primary, videoSize.width / videoSize.height)
-      pinching = updatePinching(pinching, features.pinchDist)
-      const point = cursorPoint(features, pinching)
-      const cursor = interactionBoxToView(point.x, point.y, videoSize, view, boxFraction)
+      const aspect = videoSize.width / videoSize.height
+      const toView = (p: Point) => interactionBoxToView(p.x, p.y, videoSize, view, boxFraction)
+      // Positions come from filtered landmarks; pinch distance from raw ones, so quick taps aren't smoothed away.
+      const features = { ...computeHandFeatures(primary, aspect), pinchDist: pinchDistance(raw[primaryIndex], aspect) }
+      pinch = stepPinch(pinch, features.pinchDist, result.timestamp)
+      const pinching = pinch.pinching
+      const cursor = toView(cursorPoint(features, pinching))
+
+      const secondaryIndex = filtered.findIndex((_, i) => i !== primaryIndex)
+      const secondaryFeatures =
+        secondaryIndex >= 0
+          ? { ...computeHandFeatures(filtered[secondaryIndex], aspect), pinchDist: pinchDistance(raw[secondaryIndex], aspect) }
+          : null
+      const secondary = secondaryFeatures ? { features: secondaryFeatures, pinchPoint: toView(secondaryFeatures.pinchPoint) } : null
       const velocity = previousCursor
         ? velocityBetween(previousCursor.point, cursor, (result.timestamp - previousCursor.time) / 1000)
         : { x: 0, y: 0 }
@@ -91,7 +102,7 @@ export function useHandTracking(videoRef: RefObject<HTMLVideoElement | null>): v
       lastSeenAt = now
 
       store.setVideoSize(videoSize.width, videoSize.height)
-      store.setHands(raw, filtered, { features, pinching, cursor, velocity }, now)
+      store.setHands(raw, filtered, { features, pinching, cursor, pinchPoint: toView(features.pinchPoint), velocity }, secondary, now)
       useGestureStore.getState().setCursor({ ...cursor, source: 'hand' })
     }
 
@@ -123,7 +134,7 @@ export function useHandTracking(videoRef: RefObject<HTMLVideoElement | null>): v
       cancelled = true
       client.dispose()
       store.setStatus('idle')
-      store.setHands([], [], null, 0)
+      store.setHands([], [], null, null, 0)
     }
   }, [videoRef])
 }

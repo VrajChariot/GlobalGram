@@ -76,6 +76,8 @@ export const visualConfig = {
   motion: {
     /** Exponential damping rate (1/s) easing the globe towards its target. */
     damping: 16,
+    /** While dragging, extrapolate the drag up to this far ahead (s) between input samples. */
+    predictionLead: 0.08,
   },
 }
 
@@ -183,5 +185,9 @@ export function useVisualConfigControls(): void {
     }),
     { collapsed: true },
   )
-  useControls('Motion', bindSection(visualConfig.motion, { damping: { min: 1, max: 40 } }), { collapsed: true })
+  useControls(
+    'Motion',
+    bindSection(visualConfig.motion, { damping: { min: 1, max: 40 }, predictionLead: { min: 0, max: 0.2, step: 0.005 } }),
+    { collapsed: true },
+  )
 }

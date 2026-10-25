@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useGestureStore } from '../../store/gestureStore'
 import { useHandStore } from '../../store/handStore'
 import { useSelectionStore } from '../../store/selectionStore'
 
@@ -19,7 +20,7 @@ const ROWS: Row[] = [
     return `${stats.fps} fps · ${stats.inferenceMs.toFixed(1)} ms infer · ${stats.latencyMs.toFixed(0)} ms latency`
   }],
   ['hands', () => String(useHandStore.getState().filtered.length)],
-  ['gesture', () => '— (M4)'],
+  ['gesture', () => useGestureStore.getState().phase],
   ['pinchDist', () => useHandStore.getState().primary?.features.pinchDist.toFixed(3) ?? '—'],
   ['pinching', () => {
     const p = useHandStore.getState().primary

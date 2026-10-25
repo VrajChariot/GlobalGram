@@ -10,8 +10,16 @@ export type PrimaryHand = {
   pinching: boolean
   /** Cursor in viewport CSS px (after the interaction box). */
   cursor: Point
+  /** Thumb–index midpoint in viewport CSS px. */
+  pinchPoint: Point
   /** Cursor velocity in px/s. */
   velocity: Point
+}
+
+/** The other hand, if two are up: what two-hand zoom needs. */
+export type SecondaryHand = {
+  features: HandFeatures
+  pinchPoint: Point
 }
 
 export type TrackerStats = {
@@ -36,6 +44,7 @@ type HandState = {
   /** Same hands after One Euro filtering. */
   filtered: TrackedHand[]
   primary: PrimaryHand | null
+  secondary: SecondaryHand | null
   /** performance.now() when a hand was last seen. */
   lastSeenAt: number
   videoWidth: number
@@ -43,7 +52,13 @@ type HandState = {
   stats: TrackerStats
   setStatus: (status: TrackerStatus, delegate?: 'GPU' | 'CPU' | null, renderer?: string | null, error?: string | null) => void
   setFrame: (frame: HandFrame) => void
-  setHands: (raw: TrackedHand[], filtered: TrackedHand[], primary: PrimaryHand | null, lastSeenAt: number) => void
+  setHands: (
+    raw: TrackedHand[],
+    filtered: TrackedHand[],
+    primary: PrimaryHand | null,
+    secondary: SecondaryHand | null,
+    lastSeenAt: number,
+  ) => void
   setVideoSize: (videoWidth: number, videoHeight: number) => void
   setStats: (stats: TrackerStats) => void
 }
@@ -57,13 +72,14 @@ export const useHandStore = create<HandState>()((set) => ({
   raw: [],
   filtered: [],
   primary: null,
+  secondary: null,
   lastSeenAt: 0,
   videoWidth: 1280,
   videoHeight: 720,
   stats: { inferenceMs: 0, latencyMs: 0, fps: 0 },
   setStatus: (status, delegate = null, renderer = null, error = null) => set({ status, delegate, renderer, error }),
   setFrame: (frame) => set({ frame }),
-  setHands: (raw, filtered, primary, lastSeenAt) => set({ raw, filtered, primary, lastSeenAt }),
+  setHands: (raw, filtered, primary, secondary, lastSeenAt) => set({ raw, filtered, primary, secondary, lastSeenAt }),
   setVideoSize: (videoWidth, videoHeight) => set({ videoWidth, videoHeight }),
   setStats: (stats) => set({ stats }),
 }))

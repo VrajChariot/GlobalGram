@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useMemo, type RefObject } from 'react'
 import { MathUtils, Matrix4, type Group } from 'three'
-import { isAtRest, stepInertia } from '../../core/motion/inertia'
+import { isAtRest, predictOrientation, stepInertia } from '../../core/motion/inertia'
 import { visualConfig } from '../../shared/config/visualConfig'
 import { FRAME_ORDER } from '../../shared/frameOrder'
 import { useGlobeStore } from '../../store/globeStore'
@@ -31,7 +31,13 @@ export function useGlobeTransform(groupRef: RefObject<Group | null>): void {
       store.setVelocity(next.velocity)
     }
 
-    const { yaw, pitch, distance } = useGlobeStore.getState()
+    const target = useGlobeStore.getState()
+    // While dragging, run ahead of the last input sample at the drag's speed so
+    // low-rate input (hands at ~20 Hz) moves continuously instead of in steps.
+    const { yaw, pitch } = target.isDragging
+      ? predictOrientation(target, target.velocity, (performance.now() - target.lastInputAt) / 1000, visualConfig.motion.predictionLead)
+      : target
+    const distance = target.distance
     const damping = visualConfig.motion.damping
     group.rotation.y = MathUtils.damp(group.rotation.y, yaw, damping, dt)
     group.rotation.x = MathUtils.damp(group.rotation.x, pitch, damping, dt)

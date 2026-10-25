@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { LANDMARK, mirrorHand, type Landmark, type TrackedHand } from './HandFrame'
-import { computeHandFeatures, cursorPoint, updatePinching, velocityBetween } from './handFeatures'
+import { computeHandFeatures, cursorPoint, pinchDistance, velocityBetween } from './handFeatures'
 
 /**
  * A synthetic upright hand: wrist at (0.5, 0.8), palm length 0.1 (wrist → middle
@@ -35,24 +35,20 @@ describe('computeHandFeatures', () => {
   it('maps openness from fist (0) to flat hand (1)', () => {
     expect(computeHandFeatures(makeHand({ reach: 2.4, pinchGap: 0.05 }), 1).openness).toBe(1)
     expect(computeHandFeatures(makeHand({ reach: 0.8, pinchGap: 0.05 }), 1).openness).toBe(0)
-    const mid = computeHandFeatures(makeHand({ reach: 1.5, pinchGap: 0.05 }), 1).openness
+    const mid = computeHandFeatures(makeHand({ reach: 1.3, pinchGap: 0.05 }), 1).openness
     expect(mid).toBeGreaterThan(0.3)
     expect(mid).toBeLessThan(0.8)
+  })
+
+  it('pinchDistance matches the feature', () => {
+    const hand = makeHand({ pinchGap: 0.3 })
+    expect(pinchDistance(hand, 1)).toBeCloseTo(computeHandFeatures(hand, 1).pinchDist)
   })
 
   it('corrects for the video aspect ratio', () => {
     // Same gap along x reads larger once x is scaled to pixel proportions.
     const hand = makeHand({ pinchGap: 0.2 })
     expect(computeHandFeatures(hand, 16 / 9).pinchDist).toBeGreaterThan(computeHandFeatures(hand, 1).pinchDist)
-  })
-})
-
-describe('updatePinching', () => {
-  it('starts below 0.25 and ends above 0.40', () => {
-    expect(updatePinching(false, 0.3)).toBe(false)
-    expect(updatePinching(false, 0.24)).toBe(true)
-    expect(updatePinching(true, 0.35)).toBe(true)
-    expect(updatePinching(true, 0.41)).toBe(false)
   })
 })
 

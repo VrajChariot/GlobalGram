@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decay, releaseVelocity, stepInertia, trackVelocity, ZERO_VELOCITY } from './inertia'
+import { decay, predictOrientation, releaseVelocity, stepInertia, trackVelocity, velocityOverWindow, ZERO_VELOCITY } from './inertia'
 import { MAX_PITCH } from './orbit'
 
 describe('decay', () => {
@@ -58,5 +58,53 @@ describe('releaseVelocity', () => {
     const v = { yaw: 2, pitch: 0 }
     expect(releaseVelocity(v, 16)).toBe(v)
     expect(releaseVelocity(v, 200)).toEqual(ZERO_VELOCITY)
+  })
+
+  it('drops releases slower than the minimum fling speed', () => {
+    expect(releaseVelocity({ yaw: 0.3, pitch: 0.3 }, 16, 0.6)).toEqual(ZERO_VELOCITY)
+    expect(releaseVelocity({ yaw: 1, pitch: 0 }, 16, 0.6)).toEqual({ yaw: 1, pitch: 0 })
+  })
+})
+
+describe('velocityOverWindow', () => {
+  /** 20 Hz samples moving at `speed` rad/s from t=0 to `until` ms, then holding still. */
+  function drag(speed: number, until: number, end: number) {
+    const samples = []
+    for (let t = 0; t <= end; t += 50) samples.push({ time: t, yaw: (Math.min(t, until) / 1000) * speed, pitch: 0 })
+    return samples
+  }
+
+  it('measures a steady drag', () => {
+    expect(velocityOverWindow(drag(2, 1000, 1000), 1000).yaw).toBeCloseTo(2)
+  })
+
+  it('still flings when the last frame before release was slow', () => {
+    // Moving until 950 ms, release detected at 1000 ms: the last frame alone says ~0.
+    expect(velocityOverWindow(drag(2, 950, 1000), 1000).yaw).toBeGreaterThan(1.4)
+  })
+
+  it('reads ~0 for a drag that stopped well before release', () => {
+    expect(velocityOverWindow(drag(2, 600, 1000), 1000).yaw).toBeCloseTo(0)
+  })
+
+  it('needs two samples in the window', () => {
+    expect(velocityOverWindow([{ time: 0, yaw: 0, pitch: 0 }], 10)).toEqual(ZERO_VELOCITY)
+  })
+})
+
+describe('predictOrientation', () => {
+  it('extrapolates by velocity up to the max lead', () => {
+    expect(predictOrientation({ yaw: 1, pitch: 0 }, { yaw: 2, pitch: 0 }, 0.03, 0.08).yaw).toBeCloseTo(1.06)
+    expect(predictOrientation({ yaw: 1, pitch: 0 }, { yaw: 2, pitch: 0 }, 0.08, 0.08).yaw).toBeCloseTo(1.16)
+  })
+
+  it('fades the lead out when input goes quiet', () => {
+    expect(predictOrientation({ yaw: 1, pitch: 0 }, { yaw: 2, pitch: 0 }, 0.12, 0.08).yaw).toBeCloseTo(1.08)
+    expect(predictOrientation({ yaw: 1, pitch: 0 }, { yaw: 2, pitch: 0 }, 0.5, 0.08).yaw).toBe(1)
+  })
+
+  it('never predicts backwards in time or past the pitch clamp', () => {
+    expect(predictOrientation({ yaw: 1, pitch: 0 }, { yaw: 2, pitch: 0 }, -1, 0.08).yaw).toBe(1)
+    expect(predictOrientation({ yaw: 0, pitch: 1.04 }, { yaw: 0, pitch: 10 }, 0.08, 0.08).pitch).toBeCloseTo(Math.PI / 3)
   })
 })
