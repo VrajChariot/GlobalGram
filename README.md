@@ -57,6 +57,7 @@ Hand tracking runs on-device with MediaPipe in a Web Worker; the globe is render
 - The page must be served over `localhost` or HTTPS for camera access.
 
 ```bash
+cd frontend
 pnpm install
 pnpm dev
 ```
@@ -223,7 +224,9 @@ Rules that keep it reliable:
 
 ## Project structure
 
-Four layers with one-way dependencies:
+The repo has two parts: `frontend/` (the app below, with all `pnpm` commands run from there) and `backend/` (see [Backend](#backend)).
+
+The frontend has four layers with one-way dependencies:
 
 - **`core/`**: pure TypeScript with no React, three.js or DOM imports. Unit tests sit next to each file.
 - **`infrastructure/`**: the only code touching `getUserMedia`, MediaPipe and event sources.
@@ -233,7 +236,7 @@ Four layers with one-way dependencies:
 `features` may use `store`, `core`, `infrastructure` and `shared`. `store` uses only `core` types, and `core` imports nothing outside itself. Features depend on the `EventSource` interface, never on `MockEventSource`.
 
 ```
-src/
+frontend/src/
   app/              App.tsx (composition root), main.tsx, useRenderDpr.ts
   core/
     clustering/     screenClusters
@@ -355,6 +358,7 @@ Gesture thresholds are constants in `core/gestures/thresholds.ts`, documented in
 ## Testing
 
 ```bash
+cd frontend
 pnpm test
 ```
 
