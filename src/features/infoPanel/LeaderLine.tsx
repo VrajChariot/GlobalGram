@@ -12,7 +12,7 @@ const ELBOW = 28
 const EDGE_MARGIN = 24
 
 /** Full-screen SVG line from the selected point to the info panel, driven imperatively every frame. */
-export function LeaderLine({ ref }: { ref: Ref<LeaderLineHandle> }) {
+export function LeaderLine({ ref, colour }: { ref: Ref<LeaderLineHandle>; colour: string }) {
   const group = useRef<SVGGElement>(null)
   const line = useRef<SVGPolylineElement>(null)
   const dot = useRef<SVGCircleElement>(null)
@@ -37,9 +37,9 @@ export function LeaderLine({ ref }: { ref: Ref<LeaderLineHandle> }) {
   }))
 
   return (
-    <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
+    <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible max-sm:hidden">
       <g ref={group} className="transition-opacity duration-200" style={{ opacity: 0 }}>
-        <polyline ref={line} fill="none" stroke="#3FE0FF" strokeOpacity={0.9} strokeWidth={1.25} pathLength={1} className="animate-[leader-draw_350ms_ease-out_both]" />
+        <polyline ref={line} fill="none" stroke={colour} strokeOpacity={0.9} strokeWidth={1.25} pathLength={1} className="animate-[leader-draw_350ms_ease-out_both]" />
         <circle ref={ring} r={7} fill="none" stroke="#E6FCFF" strokeOpacity={0.7} strokeWidth={1} />
         <circle ref={dot} r={2.5} fill="#E6FCFF" />
       </g>

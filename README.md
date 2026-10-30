@@ -38,10 +38,10 @@ Hand tracking runs on-device with MediaPipe in a Web Worker; the globe is render
 - Pinch-tap or dwell-to-select, switchable at runtime.
 
 **Info panel**
-- A glass card with a category chip, typed-in title, relative time, image slot, summary and source link.
+- A glass dispatch card with a category-coloured edge, importance, place and relative time, summary and source link (and an image when the event has one).
 - It scales out of the selected point with a leader line. The globe turns the point centre-left so the panel never covers it.
 
-**Mouse fallback** for everything: drag, wheel, click and Escape.
+**Mouse and keyboard fallback** for everything: drag, wheel, click, arrow keys, `+` / `-` and Escape.
 
 **Debug tooling**
 - Raw versus filtered hand skeletons and live pipeline readouts.
@@ -60,7 +60,7 @@ pnpm install
 pnpm dev
 ```
 
-Open the printed URL (usually http://localhost:5173) and allow camera access.
+Open the printed URL (usually http://localhost:5173), then choose "Turn on camera" and allow camera access (or "Use mouse only").
 
 `pnpm dev` and `pnpm build` first run `scripts/setup-mediapipe.mjs`, which:
 
@@ -109,8 +109,15 @@ Tips:
 | Drag | Rotate (with inertia) |
 | Wheel | Zoom |
 | Click | Select a beam / zoom into a cluster |
-| `Esc` | Close the info panel |
+| Arrow keys | Rotate |
+| `+` / `-` | Zoom |
+| `Esc` | Close the info panel (or the Gestures sheet, if open) |
+| `H` or `?` | Open the Gestures sheet |
 | `D` | Toggle debug mode |
+
+### Onboarding and the coach
+
+On a first visit the app explains the camera before the browser prompts for it; "Use mouse only" skips it. If the browser already granted camera access, the camera starts directly. A subtitle-style caption at the bottom (top on narrow screens) reports status (loading events, loading hand tracking, camera errors) and teaches each gesture in context. A tip retires once you have done that gesture, remembered in `localStorage` under `globalgram.coach`. The Gestures button (bottom right) opens a full guide with the category colour legend and a way to turn the camera on later.
 
 ## Debug tools
 

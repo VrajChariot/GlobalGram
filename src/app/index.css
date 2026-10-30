@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Schibsted Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+  --color-light: #e6fcff;
+  --color-haze: rgb(230 252 255 / 0.68);
+  --color-beam: #3fe0ff;
+  --color-ink: rgb(4 16 24 / 0.74);
+  --color-hairline: rgb(230 252 255 / 0.14);
+  --color-alert: #ffb4a8;
+}
+
 html,
 body,
 #root {
@@ -7,6 +17,11 @@ body,
   margin: 0;
   background: #000;
   overflow: hidden;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-beam);
+  outline-offset: 2px;
 }
 
 /* Leader line draws itself in from the selected point. */
@@ -21,24 +36,22 @@ body,
   }
 }
 
-/* Info panel: content rises in after the card scales out. */
-@keyframes panel-in {
+/* Coach caption crossfades in when its message changes. */
+@keyframes caption-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
   }
   to {
     opacity: 1;
-    transform: none;
   }
 }
 
-/* Scan line sweeping the empty image slot. */
-@keyframes scan-sweep {
-  from {
-    transform: translateY(-100%);
-  }
-  to {
-    transform: translateY(400%);
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

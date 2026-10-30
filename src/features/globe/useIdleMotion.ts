@@ -5,6 +5,7 @@ import { isAtRest } from '../../core/motion/inertia'
 import { bobOffset, IDLE_SPIN_RAD_PER_S, idleWeight } from '../../core/motion/idleMotion'
 import { GLOBE_LIFT } from '../../shared/config/visualConfig'
 import { FRAME_ORDER } from '../../shared/frameOrder'
+import { prefersReducedMotion } from '../../shared/ui/motion'
 import { useGlobeStore } from '../../store/globeStore'
 import { useHandStore } from '../../store/handStore'
 import { useSelectionStore } from '../../store/selectionStore'
@@ -30,7 +31,7 @@ export function useIdleMotion(groupRef: RefObject<Group | null>): void {
       isAtRest(globe.velocity) &&
       useHandStore.getState().primary === null &&
       useSelectionStore.getState().selectedId === null
-    const weight = quiet ? idleWeight(performance.now() - globe.lastInputAt) : 0
+    const weight = quiet && !prefersReducedMotion() ? idleWeight(performance.now() - globe.lastInputAt) : 0
 
     // Spin by moving the target, not lastInputAt: idle isn't input.
     if (weight > 0) globe.setOrientation(globe.yaw + IDLE_SPIN_RAD_PER_S * weight * dt, globe.pitch)

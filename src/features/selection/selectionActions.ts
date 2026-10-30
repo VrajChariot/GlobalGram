@@ -5,6 +5,7 @@ import { ZERO_VELOCITY } from '../../core/motion/inertia'
 import { clampDistance, orientationFacing } from '../../core/motion/orbit'
 import { gestureConfig } from '../../shared/config/gestureConfig'
 import { CAMERA_FOV, visualConfig } from '../../shared/config/visualConfig'
+import { useCoachStore } from '../../store/coachStore'
 import { useEventStore } from '../../store/eventStore'
 import { useGlobeStore } from '../../store/globeStore'
 import { useProjectionStore } from '../../store/projectionStore'
@@ -35,7 +36,13 @@ export function selectHovered(): void {
 
 /** A pinch-tap selects only in pinch mode; dwell mode selects by holding still instead. */
 export function selectHoveredByPinch(): void {
-  if (gestureConfig.selection.mode === 'pinch') selectHovered()
+  if (gestureConfig.selection.mode === 'pinch') selectHoveredByHand()
+}
+
+/** Select the hovered beam as a hand gesture: the user has learned to select, so the coach retires that tip. Mouse clicks use selectHovered. */
+export function selectHoveredByHand(): void {
+  if (useSelectionStore.getState().hoveredId) useCoachStore.getState().learn('select')
+  selectHovered()
 }
 
 export function clearSelection(): void {

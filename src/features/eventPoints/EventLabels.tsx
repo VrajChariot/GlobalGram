@@ -1,6 +1,7 @@
 import { addAfterEffect } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import { visualConfig } from '../../shared/config/visualConfig'
+import { placeLabel } from '../../shared/ui/eventText'
 import { useEventStore } from '../../store/eventStore'
 import { useSelectionStore } from '../../store/selectionStore'
 
@@ -8,6 +9,8 @@ import { useSelectionStore } from '../../store/selectionStore'
 const BADGE_POOL = 48
 /** Badges only on beams facing the viewer (cos ≈ 70°), so the limb doesn't fill with labels. */
 const BADGE_MIN_FACING = 0.35
+/** The hover label stays at least this far from the viewport's side edges, px. */
+const LABEL_EDGE_PX = 8
 
 /**
  * DOM labels for the HUD layer: count badges on cluster tips and a title
@@ -20,6 +23,8 @@ export function EventLabels() {
   const hoverDot = useRef<HTMLSpanElement>(null)
   const hoverTitle = useRef<HTMLSpanElement>(null)
   const hoverMeta = useRef<HTMLSpanElement>(null)
+  const labelKey = useRef('')
+  const labelHalf = useRef(0)
 
   useEffect(
     () =>
@@ -50,8 +55,17 @@ export function EventLabels() {
         const event = events[cluster.representative]
         show(label, screen.tip[hoveredIndex * 2], screen.tip[hoveredIndex * 2 + 1])
         setText(hoverTitle.current, event.title)
-        setText(hoverMeta.current, cluster.members.length > 1 ? `+${cluster.members.length - 1} nearby · select to expand` : event.category)
+        setText(hoverMeta.current, cluster.members.length > 1 ? `${cluster.members.length - 1} more nearby` : placeLabel(event))
         if (hoverDot.current) hoverDot.current.style.background = visualConfig.eventColors[event.category]
+        // Keep the label on screen near the edges (it is centred on the beam tip).
+        // Width is measured only when the text changes: reading it every frame forces a synchronous layout.
+        if (labelKey.current !== event.id + cluster.members.length) {
+          labelKey.current = event.id + cluster.members.length
+          labelHalf.current = label.offsetWidth / 2 + LABEL_EDGE_PX
+        }
+        const half = labelHalf.current
+        const x = Math.min(Math.max(screen.tip[hoveredIndex * 2], half), window.innerWidth - half)
+        label.style.transform = `translate3d(${x.toFixed(1)}px, ${screen.tip[hoveredIndex * 2 + 1].toFixed(1)}px, 0)`
       }),
     [],
   )
@@ -64,18 +78,18 @@ export function EventLabels() {
           ref={(el) => {
             badges.current[i] = el
           }}
-          className="absolute top-0 left-0 hidden -translate-x-1/2 -translate-y-[calc(100%+12px)] rounded-full border border-cyan-200/50 bg-black/55 px-1.5 font-mono text-[10px] leading-4 text-cyan-50"
+          className="absolute top-0 left-0 hidden -translate-x-1/2 -translate-y-[calc(100%+12px)] rounded-full border border-hairline bg-black/70 px-1.5 text-xs leading-5 font-semibold tabular-nums text-light"
         />
       ))}
       <div
         ref={hover}
-        className="absolute top-0 left-0 hidden max-w-72 -translate-x-1/2 -translate-y-[calc(100%+16px)] rounded border border-cyan-200/40 bg-[rgba(10,30,40,0.6)] px-2.5 py-1.5 font-mono text-cyan-50 backdrop-blur-sm"
+        className="absolute top-0 left-0 hidden max-w-72 -translate-x-1/2 -translate-y-[calc(100%+16px)] rounded-lg border border-hairline bg-[rgb(4_16_24/0.88)] px-3 py-2 text-light"
       >
-        <span className="flex items-start gap-2 text-xs leading-snug">
+        <span className="flex items-start gap-2 text-sm leading-snug font-medium">
           <span ref={hoverDot} className="mt-1 size-2 shrink-0 rounded-full" />
           <span ref={hoverTitle} />
         </span>
-        <span ref={hoverMeta} className="mt-0.5 block pl-4 text-[10px] tracking-wide text-cyan-200/70 uppercase" />
+        <span ref={hoverMeta} className="mt-0.5 block pl-4 text-xs text-haze" />
       </div>
     </>
   )

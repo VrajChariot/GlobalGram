@@ -44,3 +44,13 @@ export function describeCameraError(error: unknown): string {
   if (!window.isSecureContext) return 'The camera needs a secure context (https or localhost).'
   return 'Could not start the camera.'
 }
+
+/** Camera permission without prompting. 'unknown' where the Permissions API lacks `camera` (Firefox, Safari). */
+export async function queryCameraPermission(): Promise<PermissionState | 'unknown'> {
+  try {
+    const result = await navigator.permissions.query({ name: 'camera' as PermissionName })
+    return result.state
+  } catch {
+    return 'unknown'
+  }
+}

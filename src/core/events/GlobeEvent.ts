@@ -6,6 +6,8 @@ export type GlobeEvent = {
   id: string
   lat: number
   lng: number
+  /** Human-readable location, e.g. "Tokyo, Japan". */
+  place?: string
   category: EventCategory
   /** 0..1 */
   importance: number

@@ -8,7 +8,7 @@ import { useEventStore } from '../../store/eventStore'
 import { useGestureStore } from '../../store/gestureStore'
 import { useGlobeStore } from '../../store/globeStore'
 import { useSelectionStore } from '../../store/selectionStore'
-import { selectHovered } from './selectionActions'
+import { selectHoveredByHand } from './selectionActions'
 
 type PickingState = {
   index: number
@@ -63,7 +63,7 @@ export function useMagneticPicking(): void {
     if (progress >= 1) {
       s.dwellFired = true
       progress = 0
-      selectHovered()
+      selectHoveredByHand()
     }
     if (progress !== selection.dwellProgress) selection.setDwellProgress(progress)
   }, FRAME_ORDER.picking)

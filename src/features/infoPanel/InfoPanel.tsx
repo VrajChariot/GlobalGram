@@ -2,11 +2,12 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { GlobeEvent } from '../../core/events/GlobeEvent'
 import { relativeTime } from '../../core/events/relativeTime'
 import { visualConfig } from '../../shared/config/visualConfig'
+import { CATEGORY_LABELS, importanceLabel, placeLabel } from '../../shared/ui/eventText'
+import { prefersReducedMotion } from '../../shared/ui/motion'
 import { GlassPanel } from '../../shared/ui/GlassPanel'
 import { useEventStore } from '../../store/eventStore'
 import { useSelectionStore } from '../../store/selectionStore'
 import { LeaderLine, type LeaderLineHandle } from './LeaderLine'
-import { TypingText } from './TypingText'
 import { usePanelAnchor, type PanelAnchor } from './usePanelAnchor'
 
 type Side = 'left' | 'right'
@@ -16,8 +17,6 @@ const FLIP_TO_LEFT = 0.62
 const FLIP_TO_RIGHT = 0.38
 const OPEN_MS = 250
 const CLOSE_MS = 180
-/** Content sections fade in one after another once the card has opened (ms). */
-const STAGGER_MS = [120, 170, 220, 270]
 
 /**
  * Glass card for the selected event, on the side of the screen with more
@@ -69,7 +68,7 @@ function OpenPanel({ event, onClose, closing = false, onClosed }: OpenPanelProps
         { transform: 'scale(1)', opacity: 1 },
         { transform: 'scale(0.1)', opacity: 0 },
       ],
-      { duration: CLOSE_MS, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'both' },
+      { duration: prefersReducedMotion() ? 0 : CLOSE_MS, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'both' },
     )
     animation.onfinish = () => closed.current?.()
     return () => animation.cancel()
@@ -88,7 +87,7 @@ function OpenPanel({ event, onClose, closing = false, onClosed }: OpenPanelProps
           { transform: 'scale(0.1)', opacity: 0 },
           { transform: 'scale(1)', opacity: 1 },
         ],
-        { duration: OPEN_MS, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)', fill: 'both' },
+        { duration: prefersReducedMotion() ? 0 : OPEN_MS, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)', fill: 'both' },
       )
     }
     leader.current?.update(anchor, rect)
@@ -105,89 +104,59 @@ function OpenPanel({ event, onClose, closing = false, onClosed }: OpenPanelProps
   }, [])
 
   const colour = visualConfig.eventColors[event.category]
+  const titleId = `event-${event.id}-title`
 
   return (
     <>
-      <LeaderLine ref={leader} />
-      <div className={`${closing ? 'pointer-events-none' : 'pointer-events-auto'} absolute top-1/2 w-[22rem] max-w-[calc(100vw-2rem)] -translate-y-1/2 ${side === 'right' ? 'right-[5vw]' : 'left-[5vw]'}`}>
-        <GlassPanel ref={panel} className="max-h-[75vh] overflow-y-auto p-5 font-mono text-cyan-50">
-          <div className="flex items-start justify-between gap-3">
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] tracking-[0.15em] uppercase"
-              style={{ borderColor: `${colour}88`, color: colour }}
-            >
-              <span className="size-1.5 rounded-full" style={{ background: colour }} />
-              {event.category}
-            </span>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close"
-              className="-mt-1 -mr-1 rounded px-1.5 text-lg leading-none text-cyan-200/70 hover:bg-cyan-300/10 hover:text-cyan-50"
-            >
-              ×
-            </button>
-          </div>
+      <LeaderLine ref={leader} colour={colour} />
+      <div
+        className={`${closing ? 'pointer-events-none' : 'pointer-events-auto'} absolute inset-x-3 bottom-16 sm:inset-x-auto sm:bottom-auto sm:top-1/2 sm:w-[24rem] sm:-translate-y-1/2 ${side === 'right' ? 'sm:right-[5vw]' : 'sm:left-[5vw]'}`}
+      >
+        <GlassPanel ref={panel} className="max-h-[55vh] overflow-y-auto sm:max-h-[75vh]">
+          <article aria-labelledby={titleId} className="border-l-[3px] py-5 pr-5 pl-[1.125rem] text-light" style={{ borderColor: colour }}>
+            <div className="flex items-start gap-3">
+              <p className="flex flex-1 flex-wrap gap-x-3 text-sm font-semibold">
+                <span style={{ color: colour }}>{CATEGORY_LABELS[event.category]}</span>
+                <span className="font-medium text-haze">{importanceLabel(event.importance)}</span>
+              </p>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close event"
+                className="-mt-2 -mr-2 grid size-10 shrink-0 place-items-center rounded-lg text-haze hover:bg-white/10 hover:text-light"
+              >
+                <svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
+                  <line x1={3} y1={3} x2={13} y2={13} />
+                  <line x1={13} y1={3} x2={3} y2={13} />
+                </svg>
+              </button>
+            </div>
 
-          <h2 className="mt-3 text-base leading-snug font-semibold text-white">
-            <TypingText text={event.title} />
-          </h2>
-          <p className="mt-1.5 animate-[panel-in_300ms_ease-out_both] text-[11px] tracking-wide text-cyan-200/70" style={{ animationDelay: `${STAGGER_MS[0]}ms` }}>
-            {relativeTime(event.timestamp, now)} · {formatLatLng(event.lat, event.lng)}
-          </p>
-
-          <div
-            className="relative mt-4 aspect-video animate-[panel-in_300ms_ease-out_both] overflow-hidden rounded border border-[#3FE0FF]/25"
-            style={{ animationDelay: `${STAGGER_MS[1]}ms` }}
-          >
-            {event.imageUrl ? (
-              <img src={event.imageUrl} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(rgba(63,224,255,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(63,224,255,0.07)_1px,transparent_1px)] bg-[size:16px_16px] text-[10px] tracking-[0.2em] text-cyan-200/50 uppercase">
-                No imagery
-                <span
-                  aria-hidden
-                  className="absolute inset-x-0 top-0 h-1/4 animate-[scan-sweep_2.4s_linear_infinite] bg-gradient-to-b from-transparent via-[#3FE0FF]/15 to-transparent"
-                />
-              </div>
-            )}
-          </div>
-
-          {event.summary && (
-            <p className="mt-4 animate-[panel-in_300ms_ease-out_both] text-[13px] leading-relaxed text-cyan-50/90" style={{ animationDelay: `${STAGGER_MS[2]}ms` }}>
-              {event.summary}
+            <h2 id={titleId} className="mt-2 text-2xl leading-[1.2] font-semibold tracking-[-0.01em] text-balance">
+              {event.title}
+            </h2>
+            <p className="mt-2 flex flex-wrap gap-x-2 text-sm">
+              <span className="font-medium">{placeLabel(event)}</span>
+              <span className="text-haze">{relativeTime(event.timestamp, now)}</span>
             </p>
-          )}
 
-          <div className="mt-4 flex animate-[panel-in_300ms_ease-out_both] items-center justify-between text-[11px]" style={{ animationDelay: `${STAGGER_MS[3]}ms` }}>
-            <Importance value={event.importance} />
+            {event.imageUrl && <img src={event.imageUrl} alt="" className="mt-4 aspect-video w-full rounded-lg object-cover" />}
+
+            {event.summary && <p className="mt-4 text-base leading-[1.55] text-light/90">{event.summary}</p>}
+
             {event.sourceUrl && (
-              <a href={event.sourceUrl} target="_blank" rel="noreferrer" className="text-[#3FE0FF] underline-offset-4 hover:underline">
-                Source ↗
+              <a
+                href={event.sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-5 inline-block text-sm font-medium text-beam underline decoration-beam/40 underline-offset-4 hover:decoration-beam"
+              >
+                Read the source
               </a>
             )}
-          </div>
+          </article>
         </GlassPanel>
       </div>
     </>
   )
-}
-
-/** Five-segment importance meter. */
-function Importance({ value }: { value: number }) {
-  const lit = Math.max(1, Math.round(value * 5))
-  return (
-    <span className="flex items-center gap-2 text-cyan-200/60">
-      importance
-      <span className="flex gap-0.5">
-        {Array.from({ length: 5 }, (_, i) => (
-          <span key={i} className={`h-2.5 w-1.5 rounded-[1px] ${i < lit ? 'bg-[#3FE0FF]' : 'bg-cyan-200/15'}`} />
-        ))}
-      </span>
-    </span>
-  )
-}
-
-function formatLatLng(lat: number, lng: number): string {
-  return `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? 'N' : 'S'} ${Math.abs(lng).toFixed(2)}°${lng >= 0 ? 'E' : 'W'}`
 }

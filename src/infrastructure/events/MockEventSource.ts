@@ -50,6 +50,7 @@ export function generateMockEvents({ count = 2000, seed = 20261024, now = Date.n
       id,
       lat: round(spot.lat, 4),
       lng: round(spot.lng, 4),
+      place: `${hub.city}, ${hub.country}`,
       category,
       importance: round(importanceFor(category, random), 3),
       title: fill(pick(random, TITLES[category]), hub, random),

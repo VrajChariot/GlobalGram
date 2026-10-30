@@ -9,6 +9,10 @@ import { useGlobeStore } from '../../store/globeStore'
 const WHEEL_ZOOM_PER_DELTA = 0.001
 /** Movement below this is a click, not a drag. */
 const DRAG_THRESHOLD_PX = 4
+/** One arrow-key press turns the globe this many screen widths (about 5°). */
+const KEY_ROTATE_SCREENS = 0.03
+/** One + press scales the camera distance by this; − divides by it. */
+const KEY_ZOOM_IN = 0.9
 
 type Press = {
   pointerId: number
@@ -27,8 +31,9 @@ export type MouseFallbackHandlers = {
 }
 
 /**
- * Mouse/touch stand-in for hand gestures: hover moves the cursor, drag
- * rotates with inertia, click taps, wheel zooms, Escape cancels.
+ * Mouse/touch/keyboard stand-in for hand gestures: hover moves the cursor, drag
+ * rotates with inertia, click taps, wheel zooms, Escape cancels. Arrow keys
+ * turn the globe and + / − zoom it.
  */
 export function useMouseFallback(targetRef: RefObject<HTMLElement | null>, handlers: MouseFallbackHandlers = {}): void {
   const latest = useRef(handlers)
@@ -99,7 +104,47 @@ export function useMouseFallback(targetRef: RefObject<HTMLElement | null>, handl
     }
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') latest.current.onEscape?.()
+      // An open dialog owns the keyboard: Escape closes it without clearing the selection.
+      if (document.querySelector('dialog[open]')) return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      const store = useGlobeStore.getState()
+      let dx = 0
+      let dy = 0
+      switch (e.key) {
+        case 'Escape':
+          latest.current.onEscape?.()
+          return
+        case 'ArrowLeft':
+          dx = -KEY_ROTATE_SCREENS
+          break
+        case 'ArrowRight':
+          dx = KEY_ROTATE_SCREENS
+          break
+        case 'ArrowUp':
+          dy = -KEY_ROTATE_SCREENS
+          break
+        case 'ArrowDown':
+          dy = KEY_ROTATE_SCREENS
+          break
+        case '+':
+        case '=':
+          store.setDistance(zoomByFactor(store.distance, KEY_ZOOM_IN))
+          store.setLastInputAt(performance.now())
+          return
+        case '-':
+        case '_':
+          store.setDistance(zoomByFactor(store.distance, 1 / KEY_ZOOM_IN))
+          store.setLastInputAt(performance.now())
+          return
+        default:
+          return
+      }
+      e.preventDefault()
+      const next = applyDrag({ yaw: store.yaw, pitch: store.pitch }, dx, dy)
+      store.setVelocity(ZERO_VELOCITY)
+      store.setOrientation(next.yaw, next.pitch)
+      store.setLastInputAt(performance.now())
     }
 
     target.addEventListener('pointerdown', onPointerDown)

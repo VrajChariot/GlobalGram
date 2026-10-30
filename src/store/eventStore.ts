@@ -3,7 +3,7 @@ import type { Cluster } from '../core/clustering/screenClusters'
 import type { GlobeEvent } from '../core/events/GlobeEvent'
 import type { ScreenSegments } from '../core/picking/magneticSnap'
 
-type LoadStatus = 'idle' | 'loading' | 'ready' | 'error'
+export type LoadStatus = 'idle' | 'loading' | 'ready' | 'error'
 
 /** Projected beams, one per cluster instance. Arrays are reused; `version` bumps on rewrite. */
 export type ScreenCache = ScreenSegments & {

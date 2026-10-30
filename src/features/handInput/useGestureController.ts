@@ -7,6 +7,8 @@ import { applyDrag, clampDistance } from '../../core/motion/orbit'
 import { useGestureStore } from '../../store/gestureStore'
 import { useGlobeStore } from '../../store/globeStore'
 import { useHandStore, type PrimaryHand, type SecondaryHand } from '../../store/handStore'
+import { useCoachStore } from '../../store/coachStore'
+import { useSelectionStore } from '../../store/selectionStore'
 
 /** Samples older than this are dropped; the fling only looks at the last 200 ms. */
 const SAMPLE_HISTORY_MS = 400
@@ -65,17 +67,20 @@ export function useGestureController(handlers: GestureHandlers): void {
           // Up to when the pinch began opening: a confirmed release arrives a little later.
           globe.setVelocity(flingVelocity(samples, effect.releasedAt))
           globe.setDragging(false)
+          useCoachStore.getState().learn('rotate')
           break
         case 'zoom':
           globe.setDistance(clampDistance(zoomStartDistance * effect.scale))
           break
         case 'zoomEnd':
           globe.setDragging(false)
+          useCoachStore.getState().learn('zoom')
           break
         case 'select':
           latest.current.onSelect()
           break
         case 'openPalm':
+          if (useSelectionStore.getState().selectedId !== null) useCoachStore.getState().learn('close')
           latest.current.onOpenPalm()
           break
       }

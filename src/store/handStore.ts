@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { HandFeatures, Point } from '../core/hands/handFeatures'
 import type { HandFrame, TrackedHand } from '../core/hands/HandFrame'
 
-type TrackerStatus = 'idle' | 'loading' | 'ready' | 'error'
+export type TrackerStatus = 'idle' | 'loading' | 'ready' | 'error'
 
 /** The hand that drives the cursor. */
 export type PrimaryHand = {
