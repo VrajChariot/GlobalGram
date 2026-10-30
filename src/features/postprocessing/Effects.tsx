@@ -3,9 +3,11 @@ import { Bloom, ChromaticAberration, EffectComposer, Noise } from '@react-three/
 import type { BloomEffect, ChromaticAberrationEffect, NoiseEffect } from 'postprocessing'
 import { useEffect, useMemo, useRef } from 'react'
 import { RENDER_QUALITY, visualConfig } from '../../shared/config/visualConfig'
+import { useQualityStore } from '../../store/qualityStore'
 import { AlphaFromBrightnessEffect } from './AlphaFromBrightnessEffect'
 
 export function Effects() {
+  const tier = useQualityStore((s) => s.tier)
   const bloom = useRef<BloomEffect>(null)
   const chromatic = useRef<ChromaticAberrationEffect>(null)
   const noise = useRef<NoiseEffect>(null)
@@ -25,19 +27,24 @@ export function Effects() {
   })
 
   const p = visualConfig.post
+  const isLowTier = tier === 'low'
   return (
-    <EffectComposer multisampling={RENDER_QUALITY.multisampling}>
-      <Bloom
-        ref={bloom}
-        mipmapBlur
-        luminanceThreshold={p.bloomThreshold}
-        luminanceSmoothing={p.bloomSmoothing}
-        radius={p.bloomRadius}
-        intensity={p.bloomIntensity}
-      />
-      <ChromaticAberration ref={chromatic} radialModulation={false} modulationOffset={0} />
-      {/* Premultiplied so the grain only lands on the hologram, not the room behind it. */}
-      <Noise ref={noise} premultiply opacity={p.noiseOpacity} />
+    <EffectComposer multisampling={isLowTier ? 0 : RENDER_QUALITY.multisampling}>
+      {!isLowTier && (
+        <>
+          <Bloom
+            ref={bloom}
+            mipmapBlur
+            luminanceThreshold={p.bloomThreshold}
+            luminanceSmoothing={p.bloomSmoothing}
+            radius={p.bloomRadius}
+            intensity={p.bloomIntensity}
+          />
+          <ChromaticAberration ref={chromatic} radialModulation={false} modulationOffset={0} />
+          {/* Premultiplied so the grain only lands on the hologram, not the room behind it. */}
+          <Noise ref={noise} premultiply opacity={p.noiseOpacity} />
+        </>
+      )}
       <primitive object={alpha} />
     </EffectComposer>
   )
