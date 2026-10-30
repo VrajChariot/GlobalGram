@@ -12,6 +12,7 @@ Hand tracking runs on-device with MediaPipe in a Web Worker; the globe is render
 - [Debug tools](#debug-tools)
 - [How it works](#how-it-works)
 - [Project structure](#project-structure)
+- [Backend](#backend)
 - [Configuration and tuning](#configuration-and-tuning)
 - [Testing](#testing)
 - [Performance notes](#performance-notes)
@@ -33,7 +34,7 @@ Hand tracking runs on-device with MediaPipe in a Web Worker; the globe is render
 **Hand interaction**
 - MediaPipe HandLandmarker in a Web Worker on the GPU delegate, with frames dropped (never queued) while the worker is busy.
 - One Euro filtering, an interaction box that maps the central 70% of the camera frame to the whole screen, and stable hand identity across frames.
-- A pure, unit-tested gesture state machine for hover, pinch-tap, pinch-drag rotate with inertia, two-hand zoom and open-palm close.
+- A pure, unit-tested gesture state machine for hover, pinch-tap, pinch-drag rotate with inertia, two-hand zoom, palm swipe and thumbs-up close.
 - A magnetic reticle that locks onto nearby beams, shows lock brackets, and fills a progress ring as your fingers close.
 - Pinch-tap or dwell-to-select, switchable at runtime.
 
@@ -61,6 +62,8 @@ pnpm dev
 ```
 
 Open the printed URL (usually http://localhost:5173), then choose "Turn on camera" and allow camera access (or "Use mouse only").
+
+Real events need the backend running (see [Backend](#backend)); without it the caption reads "Couldn't load events". For the 2,000 mock events with no backend, run `VITE_EVENT_SOURCE=mock pnpm dev`.
 
 `pnpm dev` and `pnpm build` first run `scripts/setup-mediapipe.mjs`, which:
 
@@ -93,7 +96,8 @@ Raise a hand in front of the camera. A ring (the reticle) follows your index fin
 | **Pinch-tap** | Pinch thumb and index, release quickly without moving | Select the locked beam: a single event opens its info panel, a cluster zooms in until it splits |
 | **Pinch-drag** | Pinch, move, release | Rotate the globe: horizontal spins, vertical tilts (±60°); a flick keeps coasting |
 | **Two-hand zoom** | Both hands up, pinch with the second hand, spread or close | Spreading zooms in, closing zooms out |
-| **Open palm** | Hold a flat hand, thumb spread, for 300 ms | Close the info panel |
+| **Thumbs-up** | Make a fist with the thumb pointing up, hold 300 ms | Close the info panel |
+| **Palm swipe** | Sweep a flat hand, thumb spread, across 20% of the screen within 300 ms | Step to the next (left) or previous (right) story when a spot has several |
 | **Dwell** *(optional mode)* | Hold the reticle on a beam for 600 ms | Select it without pinching (enable in **D → Selection → mode**) |
 
 Tips:
@@ -208,7 +212,8 @@ Rules that keep it reliable:
 - **Confirmed release:** a drag ends only when the pinch opens past 0.40 or stays open for 120 ms, so a single noisy frame never cuts a rotation.
 - **Inertia:** measured over the last 200 ms of the drag, then decays ×0.92 per 60 Hz frame. Slow releases don't fling.
 - **Prediction:** while dragging, the render loop extrapolates up to 80 ms ahead at the drag's speed, so ~10–30 Hz tracking still rotates smoothly at 60 fps.
-- **Open palm:** fires once per opening and needs the thumb spread, so a relaxed open hand doesn't trigger it.
+- **Thumbs-up:** fires once per showing, after 300 ms. The four other fingertips must be curled near the wrist and the thumb tip well above the index knuckle, so a fist or a pinch doesn't trigger it.
+- **Palm swipe:** a flat palm (openness > 0.9, thumb spread > 0.7) covering 20% of the screen width within 300 ms; 700 ms cooldown.
 
 ### Picking
 
@@ -276,7 +281,7 @@ export interface EventSource {
 }
 ```
 
-Then swap `new MockEventSource()` for your source in `app/App.tsx`, the only place a concrete source is chosen.
+`app/App.tsx` is the only place a concrete source is chosen. It uses `HttpEventSource` (the `backend/` API below) by default, and `MockEventSource` when `VITE_EVENT_SOURCE=mock`. `VITE_API_BASE_URL` overrides the API origin; by default requests go to `/api`, which the Vite dev and preview servers proxy to `http://127.0.0.1:8000`.
 
 `GlobeEvent` is defined in `core/events/GlobeEvent.ts`:
 
@@ -305,6 +310,27 @@ curl -sSLo ne_50m_land.geojson \
 node scripts/build-land-mask.mjs ne_50m_land.geojson public/land-mask.png 2048
 ```
 
+## Backend
+
+`backend/` is a FastAPI service (Python 3.12, [uv](https://docs.astral.sh/uv/), domain-driven layout under `src/globalgram_api/`: `domain`, `application`, `infrastructure`, `api`). It pulls live world events from [GDELT 2.0](https://www.gdeltproject.org/) (15-minute export files; news), [USGS](https://earthquake.usgs.gov/earthquakes/feed/) (earthquakes M2.5+), [GDACS](https://www.gdacs.org/) (disaster alerts) and [NASA EONET](https://eonet.gsfc.nasa.gov/) (storms, floods, wildfires, volcanoes, sea ice). It keeps only events from the last 24 hours in memory, refreshes every 5 minutes, and enriches the top events with the headline, summary and image from each article's Open Graph tags. A restart backfills the last 24 hours on the first refresh.
+
+```bash
+cd backend
+uv sync
+uv run uvicorn globalgram_api.api.app:app --port 8000
+```
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/events?limit=2000&category=conflict&category=politics` | `GlobeEvent[]` JSON, most important first. `limit` 1–5000; `category` is repeatable. Absent optional fields are omitted. |
+| `GET /api/health` | `{status: "starting"\|"ok"\|"degraded", eventCount, lastRefreshAt, lastError, feedErrors}` |
+
+Settings are environment variables prefixed `GLOBALGRAM_` (or a `backend/.env`): `REFRESH_INTERVAL_SECONDS`, `ENRICH_LIMIT`, `GDELT_BASE_URL`, `USGS_URL`, `GDACS_URL`, `EONET_URL`, `GDELT_CONCURRENCY`, `ENRICH_CONCURRENCY`, `HTTP_TIMEOUT_SECONDS`, `CORS_ORIGINS`, `ENABLE_SCHEDULER`.
+
+USGS, GDACS and EONET supply the `disaster` events and EONET's sea-ice and water-colour events are the only `science` ones. A failing feed shows up under `feedErrors` in `/api/health` and does not block the others. Another source is a new `EventFeed` adapter added to the feeds list in `api/app.py`; the domain does not change.
+
+Checks: `uv run pytest`, `uv run ruff check .`, `uv run ruff format --check .`, `uv run mypy`.
+
 ## Configuration and tuning
 
 All tunables live in two plain objects that render loops read every frame. Leva's sliders write straight into them, so tuning never re-renders React.
@@ -323,7 +349,7 @@ Gesture thresholds are constants in `core/gestures/thresholds.ts`, documented in
 | Drag start | 3% of screen width |
 | Release confirmation | 120 ms |
 | Hand-loss grace | 150 ms |
-| Open palm | openness > 0.9, thumb spread > 0.7, held 300 ms |
+| Thumbs-up | four fingertips < 1.3 palm lengths from the wrist, thumb tip > 0.6 palm lengths above the index knuckle, held 300 ms |
 | Dwell | 600 ms |
 
 ## Testing
@@ -338,7 +364,7 @@ pnpm test
   - tap vs drag, and slow drags;
   - pinch hysteresis and noisy releases;
   - hand loss mid-drag and mid-zoom;
-  - two-hand transitions and open palm;
+  - two-hand transitions, thumbs-up and palm swipe;
   - a "10 rotations in a row" reliability run with simulated jitter and dropped frames.
 - **Hand processing:** One Euro filter (jitter suppression and lag), relative pinch detection, hand slots, features, interaction box with cover cropping.
 - **Geometry and picking:** projection, clustering and split distances, magnetic snapping, inertia and prediction, land sampling, and the deterministic mock event generator.
@@ -360,7 +386,7 @@ Targets: 60 fps rendering, ~30 fps tracking, at most 80 ms hand-to-response late
 | Tracking fps is low (see `tracking` readout) | Close other GPU-heavy tabs; make the window smaller; lower `RENDER_QUALITY` in `visualConfig.ts` |
 | Cursor jitters | D → One Euro filter: lower `minCutoff` for a steadier rest, raise `beta` to reduce lag when moving |
 | Taps not registering / accidental taps | Record a session (D → R) and replay it (D → L) to see the `gesture` phase and `pinchDist` frame by frame |
-| Open palm doesn't close the panel | Check that your flat palm reads `openness` above 0.9 and `pinchDist` above 0.7 in the readouts |
+| Thumbs-up doesn't close the panel | Keep the thumb straight up with the other fingers fully curled, and the hand upright and facing the camera |
 | r3f-perf shows GPU 0.000 ms | Expected: it only times the scene's own render calls and can't see the tracker's worker |
 
 ## Credits
