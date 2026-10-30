@@ -24,7 +24,7 @@ dist-ssr
 *.sw?
 
 # MediaPipe assets (scripts/setup-mediapipe.mjs)
-public/mediapipe
+frontend/public/mediapipe
 
 # Debug landmark recordings (D → R)
 landmarks-*.json
