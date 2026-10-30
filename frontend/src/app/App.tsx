@@ -22,12 +22,13 @@ import { PickingController } from '../features/selection/PickingController'
 import { Reticle } from '../features/selection/Reticle'
 import { clearSelection, selectHovered, selectHoveredByPinch } from '../features/selection/selectionActions'
 import { MockEventSource } from '../infrastructure/events/MockEventSource'
+import { HttpEventSource } from '../infrastructure/events/HttpEventSource'
 import { CAMERA_FOV } from '../shared/config/visualConfig'
 import { useRenderDpr } from './useRenderDpr'
 import { useGlobeStore } from '../store/globeStore'
 
 /** Composition root: the only place that picks a concrete EventSource. */
-const eventSource = new MockEventSource()
+const eventSource = import.meta.env.VITE_EVENT_SOURCE === 'mock' ? new MockEventSource() : new HttpEventSource()
 
 /** Drive render loop at 30fps when in low-quality mode. */
 function FrameRateCap() {
