@@ -14,6 +14,9 @@ from globalgram_api.config import Settings
 from globalgram_api.domain.events.ports import EventEnricher, EventFeed, EventRepository
 from globalgram_api.infrastructure.enrichment.opengraph import OpenGraphEnricher
 from globalgram_api.infrastructure.gdelt.feed import GdeltFeed
+from globalgram_api.infrastructure.hazards.eonet import EonetFeed
+from globalgram_api.infrastructure.hazards.gdacs import GdacsFeed
+from globalgram_api.infrastructure.hazards.usgs import UsgsFeed
 from globalgram_api.infrastructure.persistence.memory_repository import InMemoryEventRepository
 from globalgram_api.infrastructure.scheduler import RefreshScheduler
 
@@ -41,7 +44,12 @@ def create_app(
         active_feeds: Sequence[EventFeed] = (
             feeds
             if feeds is not None
-            else [GdeltFeed(client, settings.gdelt_base_url, settings.gdelt_concurrency, clock)]
+            else [
+                GdeltFeed(client, settings.gdelt_base_url, settings.gdelt_concurrency, clock),
+                UsgsFeed(client, settings.usgs_url),
+                GdacsFeed(client, settings.gdacs_url, clock),
+                EonetFeed(client, settings.eonet_url),
+            ]
         )
         active_enricher: EventEnricher = enricher or OpenGraphEnricher(client, settings.enrich_concurrency)
         repository = InMemoryEventRepository()
