@@ -14,6 +14,8 @@ export type HandFeatures = {
   pinchDist: number
   /** 0 = fist, 1 = flat open hand. */
   openness: number
+  /** Thumb up with the other fingers curled. */
+  thumbsUp: boolean
   /** Thumb–index midpoint, normalised video coordinates. */
   pinchPoint: Point
   /** Index fingertip, normalised video coordinates. */
@@ -34,6 +36,22 @@ export function pinchDistance(hand: TrackedHand, aspect: number): number {
   return distance(l[LANDMARK.THUMB_TIP], l[LANDMARK.INDEX_TIP], aspect) / Math.max(distance(l[LANDMARK.WRIST], l[LANDMARK.MIDDLE_MCP], aspect), 1e-6)
 }
 
+/** The four non-thumb fingertips must sit this close to the wrist (palm lengths) for a curled fist; flat ≈ 1.64. */
+const CURLED_REACH = 1.3
+/** The thumb tip must rise this many palm lengths above the index knuckle, and reach this far from the wrist. */
+const THUMB_RISE = 0.6
+const THUMB_REACH = 1.2
+
+/** Thumb pointing up out of a closed fist (image y grows downwards). */
+export function isThumbsUp(hand: TrackedHand, aspect: number): boolean {
+  const l = hand.landmarks
+  const palm = Math.max(distance(l[LANDMARK.WRIST], l[LANDMARK.MIDDLE_MCP], aspect), 1e-6)
+  const curled = FINGERTIPS.slice(1).reduce((sum, tip) => sum + distance(l[tip], l[LANDMARK.WRIST], aspect), 0) / 4 / palm
+  const thumb = l[LANDMARK.THUMB_TIP]
+  const rise = (l[LANDMARK.INDEX_MCP].y - thumb.y) / palm
+  return curled < CURLED_REACH && rise > THUMB_RISE && distance(thumb, l[LANDMARK.WRIST], aspect) / palm > THUMB_REACH
+}
+
 export function computeHandFeatures(hand: TrackedHand, aspect: number): HandFeatures {
   const l = hand.landmarks
   const palm = Math.max(distance(l[LANDMARK.WRIST], l[LANDMARK.MIDDLE_MCP], aspect), 1e-6)
@@ -43,6 +61,7 @@ export function computeHandFeatures(hand: TrackedHand, aspect: number): HandFeat
   return {
     pinchDist: distance(thumb, index, aspect) / palm,
     openness: Math.min(1, Math.max(0, (reach - FIST_REACH) / (OPEN_REACH - FIST_REACH))),
+    thumbsUp: isThumbsUp(hand, aspect),
     pinchPoint: { x: (thumb.x + index.x) / 2, y: (thumb.y + index.y) / 2 },
     indexTip: { x: index.x, y: index.y },
   }

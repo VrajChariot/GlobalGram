@@ -12,8 +12,8 @@ const PINCHED = 0.1
 /** Flat palm: thumb spread wide from the index. */
 const PALM = 0.9
 
-function hand(x: number, y: number, pinchDist = OPEN, openness = 0.5): HandInput {
-  return { pinchDist, pinchPoint: { x, y }, openness }
+function hand(x: number, y: number, pinchDist = OPEN, openness = 0.5, thumbsUp = false): HandInput {
+  return { pinchDist, pinchPoint: { x, y }, openness, thumbsUp }
 }
 
 /** Feeds frames through the machine, collecting every effect. */
@@ -300,32 +300,85 @@ describe('two-hand zoom', () => {
   })
 })
 
-describe('open palm', () => {
-  it('fires once after 300 ms open, and re-arms after closing', () => {
+describe('thumbs-up', () => {
+  const THUMB = () => hand(500, 300, 0.5, 0.1, true)
+
+  it('fires once after 300 ms, and re-arms after lowering it', () => {
     const s = new Session()
-    s.frames(5, hand(500, 300, PALM, 0.95)) // 165 ms
-    expect(s.count('openPalm')).toBe(0)
-    s.frames(10, hand(500, 300, PALM, 0.95))
-    expect(s.count('openPalm')).toBe(1)
-    s.frames(20, hand(500, 300, PALM, 0.95))
-    expect(s.count('openPalm')).toBe(1)
-    s.frame(hand(500, 300, PALM, 0.4))
-    s.frames(12, hand(500, 300, PALM, 0.95))
-    expect(s.count('openPalm')).toBe(2)
+    s.frames(5, THUMB()) // 165 ms
+    expect(s.count('thumbsUp')).toBe(0)
+    s.frames(10, THUMB())
+    expect(s.count('thumbsUp')).toBe(1)
+    s.frames(20, THUMB())
+    expect(s.count('thumbsUp')).toBe(1)
+    s.frame(hand(500, 300))
+    s.frames(12, THUMB())
+    expect(s.count('thumbsUp')).toBe(2)
   })
 
-  it('a relaxed open hand with the thumb by the index does not fire', () => {
+  it('a brief thumbs-up does not fire', () => {
     const s = new Session()
-    s.frames(20, hand(500, 300, 0.5, 0.95))
-    expect(s.count('openPalm')).toBe(0)
+    s.frames(5, THUMB())
+    s.frame(hand(500, 300))
+    s.frames(5, THUMB())
+    expect(s.count('thumbsUp')).toBe(0)
   })
 
-  it('a brief open hand does not fire', () => {
+  it('a flat palm no longer closes', () => {
     const s = new Session()
-    s.frames(5, hand(500, 300, PALM, 0.95))
-    s.frame(hand(500, 300, PALM, 0.5))
-    s.frames(5, hand(500, 300, PALM, 0.95))
-    expect(s.count('openPalm')).toBe(0)
+    s.frames(40, hand(500, 300, PALM, 0.95))
+    expect(s.count('thumbsUp')).toBe(0)
+  })
+})
+
+describe('swipe', () => {
+  /** A flat palm sweeping `dx` px over `n` frames from x=800. */
+  function sweep(s: Session, dx: number, n = 6): void {
+    for (let i = 1; i <= n; i++) s.frame(hand(800 + (dx * i) / n, 300, PALM, 0.95))
+  }
+  const swipes = (s: Session) => s.effects.filter((e) => e.type === 'swipe')
+
+  it('a flat palm moving left is next, right is previous', () => {
+    const left = new Session()
+    left.frames(2, hand(800, 300, PALM, 0.95))
+    sweep(left, -400)
+    expect(swipes(left)).toEqual([{ type: 'swipe', direction: 1 }])
+
+    const right = new Session()
+    right.frames(2, hand(800, 300, PALM, 0.95))
+    sweep(right, 400)
+    expect(swipes(right)).toEqual([{ type: 'swipe', direction: -1 }])
+  })
+
+  it('too short or too slow is not a swipe', () => {
+    const short = new Session()
+    sweep(short, -200) // 12.5% of 1600
+    expect(swipes(short)).toHaveLength(0)
+
+    const slow = new Session()
+    sweep(slow, -400, 30) // ~1 s
+    expect(swipes(slow)).toHaveLength(0)
+  })
+
+  it('only a flat palm swipes', () => {
+    const s = new Session()
+    for (let i = 1; i <= 6; i++) s.frame(hand(800 - i * 70, 300, OPEN, 0.5))
+    expect(swipes(s)).toHaveLength(0)
+  })
+
+  it('the hand returning right after a swipe is ignored', () => {
+    const s = new Session()
+    sweep(s, -400)
+    sweep(s, 400)
+    expect(swipes(s)).toHaveLength(1)
+  })
+
+  it('swipes again after the cooldown', () => {
+    const s = new Session()
+    sweep(s, -400)
+    s.frames(30, hand(400, 300, PALM, 0.4)) // lower the palm
+    sweep(s, -400)
+    expect(swipes(s)).toHaveLength(2)
   })
 })
 

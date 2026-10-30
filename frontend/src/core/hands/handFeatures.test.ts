@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { LANDMARK, mirrorHand, type Landmark, type TrackedHand } from './HandFrame'
-import { computeHandFeatures, cursorPoint, pinchDistance, velocityBetween } from './handFeatures'
+import { computeHandFeatures, cursorPoint, isThumbsUp, pinchDistance, velocityBetween } from './handFeatures'
 
 /**
  * A synthetic upright hand: wrist at (0.5, 0.8), palm length 0.1 (wrist → middle
@@ -73,5 +73,25 @@ describe('mirrorHand', () => {
     expect(m.landmarks[LANDMARK.WRIST].x).toBeCloseTo(0.5)
     expect(m.landmarks[LANDMARK.PINKY_TIP].x).toBeCloseTo(1 - (0.5 + 0.03))
     expect(m.handedness).toBe('Left')
+  })
+})
+
+describe('isThumbsUp', () => {
+  /** Fist (fingertips 0.9 palm lengths from the wrist) with the thumb tip at `thumb` (palm lengths from the wrist; y up). */
+  function fist(thumb: { dx: number; dy: number }, reach = 0.9): TrackedHand {
+    const hand = makeHand({ reach, pinchGap: 0.5 })
+    const at = (dx: number, dy: number) => ({ x: 0.5 + dx * 0.1, y: 0.8 - dy * 0.1, z: 0 })
+    hand.landmarks[LANDMARK.THUMB_TIP] = at(thumb.dx, thumb.dy)
+    return hand
+  }
+
+  it('is true for a thumb raised out of a fist', () => {
+    expect(isThumbsUp(fist({ dx: -0.4, dy: 1.7 }), 1)).toBe(true)
+  })
+
+  it('is false for an open hand, a fist with the thumb tucked, or a thumb pointing down', () => {
+    expect(isThumbsUp(fist({ dx: -0.4, dy: 1.7 }, 1.7), 1)).toBe(false)
+    expect(isThumbsUp(fist({ dx: -0.3, dy: 0.7 }), 1)).toBe(false)
+    expect(isThumbsUp(fist({ dx: -0.4, dy: -1.5 }), 1)).toBe(false)
   })
 })

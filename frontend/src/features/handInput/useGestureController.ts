@@ -15,13 +15,15 @@ const SAMPLE_HISTORY_MS = 400
 
 export type GestureHandlers = {
   onSelect: () => void
-  onOpenPalm: () => void
+  onThumbsUp: () => void
+  /** 1 for next, −1 for previous. */
+  onSwipe: (direction: 1 | -1) => void
 }
 
 /**
  * Runs the gesture machine on every tracker frame and applies its effects:
  * drags rotate the globe (with inertia on release), two-hand spans zoom it,
- * taps select, and an open palm calls onOpenPalm.
+ * taps select, and a thumbs-up calls onThumbsUp.
  */
 export function useGestureController(handlers: GestureHandlers): void {
   const latest = useRef(handlers)
@@ -79,9 +81,12 @@ export function useGestureController(handlers: GestureHandlers): void {
         case 'select':
           latest.current.onSelect()
           break
-        case 'openPalm':
+        case 'swipe':
+          latest.current.onSwipe(effect.direction)
+          break
+        case 'thumbsUp':
           if (useSelectionStore.getState().selectedId !== null) useCoachStore.getState().learn('close')
-          latest.current.onOpenPalm()
+          latest.current.onThumbsUp()
           break
       }
       globe.setLastInputAt(performance.now())
@@ -112,5 +117,5 @@ function flingVelocity(samples: OrientationSample[], releaseTime: number): Angul
 }
 
 function toInput(hand: PrimaryHand | SecondaryHand | null): HandInput | null {
-  return hand ? { pinchDist: hand.features.pinchDist, pinchPoint: hand.pinchPoint, openness: hand.features.openness } : null
+  return hand ? { pinchDist: hand.features.pinchDist, pinchPoint: hand.pinchPoint, openness: hand.features.openness, thumbsUp: hand.features.thumbsUp } : null
 }

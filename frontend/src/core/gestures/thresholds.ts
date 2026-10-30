@@ -17,7 +17,7 @@ export const TAP_MAX_MS = 350
  * past PINCH_END) to count: one noisy frame must never end a rotation.
  */
 export const RELEASE_CONFIRM_MS = 120
-/** Openness (0 = fist, 1 = flat open hand) above which the palm counts as open… */
+/** Openness (0 = fist, 1 = flat open hand) above which the palm counts as flat (for swiping)… */
 export const OPEN_PALM = 0.9
 /**
  * …with the thumb spread away from the index (pinch distance above this).
@@ -25,8 +25,14 @@ export const OPEN_PALM = 0.9
  * their fingertips reach just as far, but the thumb rests by the index.
  */
 export const OPEN_PALM_THUMB_SPREAD = 0.7
-/** …for at least this long. */
-export const OPEN_PALM_HOLD_MS = 300
+/** A thumbs-up closes the event once held this long. */
+export const THUMBS_UP_HOLD_MS = 300
 export const DWELL_SELECT_MS = 600
 /** Hand drags released slower than this (rad/s) don't fling: release jitter shouldn't spin the globe. */
 export const MIN_FLING_SPEED = 0.6
+/** A flat-palm swipe must cover this fraction of the screen width… */
+export const SWIPE_MIN_FRACTION = 0.2
+/** …within this window (ms)… */
+export const SWIPE_WINDOW_MS = 300
+/** …and the next swipe is ignored for this long, so the hand coming back doesn't swipe the other way. */
+export const SWIPE_COOLDOWN_MS = 700

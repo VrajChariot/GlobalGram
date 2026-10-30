@@ -55,7 +55,8 @@ export function HelpSheet() {
       : ['Hold the ring still on a beam', 'Opens the event, or zooms into a group'],
     ['Pinch and drag', 'Turns the globe; flick to let it coast'],
     ['Pinch with both hands, then pull apart', 'Zooms in; bring your hands together to zoom out'],
-    ['Hold your palm open', 'Closes the event'],
+    ['Thumbs-up', 'Closes the event'],
+    ['Swipe your open palm left or right', 'Next or previous story at a spot with several'],
   ]
   const cameraAction = camera === 'off' ? 'Turn on camera' : camera === 'error' ? 'Try the camera again' : null
 

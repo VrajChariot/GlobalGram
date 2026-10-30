@@ -43,7 +43,7 @@ export function coachMessage(input: CoachInput): CoachMessage | null {
   if (phase === 'RotateDrag' && !learnedSkill('rotate')) return tip('Open your fingers to let go.')
   if (phase === 'TwoHandZoom' && !learnedSkill('zoom')) return tip('Spread your hands to zoom in, bring them together to zoom out.')
   if (!hand) return learnedSkill('hand') ? null : tip('Raise a hand in front of the camera.')
-  if (selected && !learnedSkill('close')) return tip('Hold your palm open to close this event.')
+  if (selected && !learnedSkill('close')) return tip('Give a thumbs-up to close this event.')
   if (hovered && !learnedSkill('select')) {
     const n = hovered.members
     if (n > 1) return tip(pinch ? `Pinch and release to zoom into these ${n} events.` : `Hold still to zoom into these ${n} events.`)

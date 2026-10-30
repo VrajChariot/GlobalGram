@@ -20,7 +20,7 @@ import { InfoPanel } from '../features/infoPanel/InfoPanel'
 import { Effects } from '../features/postprocessing/Effects'
 import { PickingController } from '../features/selection/PickingController'
 import { Reticle } from '../features/selection/Reticle'
-import { clearSelection, selectHovered, selectHoveredByPinch } from '../features/selection/selectionActions'
+import { clearSelection, selectHovered, selectHoveredByPinch, stepStack } from '../features/selection/selectionActions'
 import { MockEventSource } from '../infrastructure/events/MockEventSource'
 import { HttpEventSource } from '../infrastructure/events/HttpEventSource'
 import { CAMERA_FOV } from '../shared/config/visualConfig'
@@ -51,7 +51,7 @@ export function App() {
   useCameraConsent()
   useEventFeed(eventSource)
   useHandTracking(video)
-  useGestureController({ onSelect: selectHoveredByPinch, onOpenPalm: clearSelection })
+  useGestureController({ onSelect: selectHoveredByPinch, onThumbsUp: clearSelection, onSwipe: stepStack })
   useMouseFallback(canvasLayer, { onTap: selectHovered, onEscape: clearSelection })
   useAutoQuality()
 

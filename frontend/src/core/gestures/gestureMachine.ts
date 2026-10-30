@@ -5,11 +5,14 @@ import {
   DRAG_START_FRACTION,
   HAND_LOSS_MS,
   OPEN_PALM,
-  OPEN_PALM_HOLD_MS,
   OPEN_PALM_THUMB_SPREAD,
   PINCH_END,
   RELEASE_CONFIRM_MS,
+  SWIPE_COOLDOWN_MS,
+  SWIPE_MIN_FRACTION,
+  SWIPE_WINDOW_MS,
   TAP_MAX_MS,
+  THUMBS_UP_HOLD_MS,
 } from './thresholds'
 
 export type GestureStep = { state: GestureState; effects: GestureEffect[] }
@@ -104,7 +107,7 @@ export function stepGesture(state: GestureState, input: GestureInput): GestureSt
     }
   }
 
-  return { state: trackOpenPalm(next, primary, time, effects), effects }
+  return { state: trackSwipe(trackThumbsUp(next, primary, time, effects), primary, time, input.viewportWidth, effects), effects }
 }
 
 /**
@@ -123,19 +126,32 @@ function startZoom(state: GestureState, primary: HandInput, secondary: HandInput
   return { ...state, phase: 'TwoHandZoom', pinchStart: null, releaseSince: null, zoomStartSpan: Math.max(span, 1) }
 }
 
+/** Fires thumbsUp once per showing, after the thumbs-up has been held for THUMBS_UP_HOLD_MS while hovering. */
+function trackThumbsUp(state: GestureState, primary: HandInput, time: number, effects: GestureEffect[]): GestureState {
+  if (state.phase !== 'Hovering' || !primary.thumbsUp) {
+    return state.thumbSince === null && !state.thumbFired ? state : { ...state, thumbSince: null, thumbFired: false }
+  }
+  const thumbSince = state.thumbSince ?? time
+  if (!state.thumbFired && time - thumbSince >= THUMBS_UP_HOLD_MS) {
+    effects.push({ type: 'thumbsUp' })
+    return { ...state, thumbSince, thumbFired: true }
+  }
+  return { ...state, thumbSince }
+}
+
+const isFlatPalm = (hand: HandInput) => hand.openness > OPEN_PALM && hand.pinchDist > OPEN_PALM_THUMB_SPREAD
+
 /**
- * Fires openPalm once per opening, after a flat palm (fingers extended, thumb
- * spread) has been held for OPEN_PALM_HOLD_MS while hovering.
+ * Fires swipe when a flat palm travels SWIPE_MIN_FRACTION of the screen within
+ * SWIPE_WINDOW_MS while hovering.
  */
-function trackOpenPalm(state: GestureState, primary: HandInput, time: number, effects: GestureEffect[]): GestureState {
-  const flat = primary.openness > OPEN_PALM && primary.pinchDist > OPEN_PALM_THUMB_SPREAD
-  if (state.phase !== 'Hovering' || !flat) {
-    return state.palmSince === null && !state.palmFired ? state : { ...state, palmSince: null, palmFired: false }
+function trackSwipe(state: GestureState, primary: HandInput, time: number, viewportWidth: number, effects: GestureEffect[]): GestureState {
+  if (state.phase !== 'Hovering' || !isFlatPalm(primary)) {
+    return state.swipeSamples.length === 0 ? state : { ...state, swipeSamples: [] }
   }
-  const palmSince = state.palmSince ?? time
-  if (!state.palmFired && time - palmSince >= OPEN_PALM_HOLD_MS) {
-    effects.push({ type: 'openPalm' })
-    return { ...state, palmSince, palmFired: true }
-  }
-  return { ...state, palmSince }
+  const samples = [...state.swipeSamples.filter((s) => s.time >= time - SWIPE_WINDOW_MS), { time, x: primary.pinchPoint.x }]
+  const dx = samples[samples.length - 1].x - samples[0].x
+  if (Math.abs(dx) < SWIPE_MIN_FRACTION * viewportWidth || time - state.swipeAt < SWIPE_COOLDOWN_MS) return { ...state, swipeSamples: samples }
+  effects.push({ type: 'swipe', direction: dx < 0 ? 1 : -1 })
+  return { ...state, swipeSamples: [], swipeAt: time }
 }

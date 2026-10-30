@@ -9,6 +9,7 @@ export type HandInput = {
   pinchDist: number
   /** Thumb–index midpoint: stable through the pinch, so movement is measured here. */
   pinchPoint: Point
+  thumbsUp: boolean
   /** 0 = fist, 1 = flat open hand. */
   openness: number
 }
@@ -33,7 +34,9 @@ export type GestureEffect =
   /** Hand span at zoom start ÷ span now: < 1 when the hands spread apart. */
   | { type: 'zoom'; scale: number }
   | { type: 'zoomEnd' }
-  | { type: 'openPalm' }
+  | { type: 'thumbsUp' }
+  /** A flat-palm swipe: 1 when the hand moved left (next), −1 when it moved right (previous). */
+  | { type: 'swipe'; direction: 1 | -1 }
 
 export type GestureState = {
   phase: GesturePhase
@@ -48,10 +51,14 @@ export type GestureState = {
   zoomStartSpan: number
   /** ms; when the pinch holding a drag or zoom started to open, while that release is unconfirmed. */
   releaseSince: number | null
-  /** ms; since when the palm has been open, if it is. */
-  palmSince: number | null
-  /** The open palm already fired for this opening. */
-  palmFired: boolean
+  /** ms; since when the thumbs-up has been held, if it is. */
+  thumbSince: number | null
+  /** The thumbs-up already fired for this showing. */
+  thumbFired: boolean
+  /** Recent palm x positions (px) while swiping is possible, oldest first. */
+  swipeSamples: { time: number; x: number }[]
+  /** ms; when the last swipe fired. */
+  swipeAt: number
 }
 
 export const INITIAL_GESTURE_STATE: GestureState = {
@@ -63,6 +70,8 @@ export const INITIAL_GESTURE_STATE: GestureState = {
   lastPoint: null,
   zoomStartSpan: 1,
   releaseSince: null,
-  palmSince: null,
-  palmFired: false,
+  thumbSince: null,
+  thumbFired: false,
+  swipeSamples: [],
+  swipeAt: -Infinity,
 }
