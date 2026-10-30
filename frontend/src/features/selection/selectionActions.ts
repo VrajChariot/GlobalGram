@@ -1,8 +1,9 @@
 import { distanceToSplit, splitAngle, type Cluster } from '../../core/clustering/screenClusters'
 import type { GlobeEvent } from '../../core/events/GlobeEvent'
 import { vectorToLatLng, writeLatLngToArray } from '../../core/geo/latLngToVector'
+import { nextInStack, stackIds } from '../../core/clustering/stack'
 import { ZERO_VELOCITY } from '../../core/motion/inertia'
-import { clampDistance, orientationFacing } from '../../core/motion/orbit'
+import { clampDistance, MIN_DISTANCE, orientationFacing } from '../../core/motion/orbit'
 import { gestureConfig } from '../../shared/config/gestureConfig'
 import { CAMERA_FOV, visualConfig } from '../../shared/config/visualConfig'
 import { useCoachStore } from '../../store/coachStore'
@@ -19,19 +20,41 @@ const MIN_FOCUS_ZOOM = 0.9
  */
 const SELECTED_OFFSET_DEG = 20
 
-/** Select what's hovered: a single event is selected (and turned centre-left), a cluster is zoomed into until it splits. */
+/**
+ * Select what's hovered: a single event is selected (and turned centre-left). A cluster is zoomed into
+ * until it splits; one still clustered at the closest zoom (events at the same spot) is selected as a
+ * stack, and selecting it again steps to its next event.
+ */
 export function selectHovered(): void {
   const { hoveredId, setSelectedId } = useSelectionStore.getState()
   if (!hoveredId) return
   const { clusters, events } = useEventStore.getState()
   const cluster = clusters.find((c) => events[c.representative].id === hoveredId)
   if (cluster && cluster.members.length > 1) {
-    focusCluster(cluster, events)
+    const focus = clusterFocus(cluster, events)
+    if (useGlobeStore.getState().distance > MIN_DISTANCE + 1e-3) focusCluster(focus)
+    else selectStack(cluster, events, focus.centre)
     return
   }
   setSelectedId(hoveredId)
   const event = events.find((e) => e.id === hoveredId)
   if (event) turnTo(event.lat, event.lng + SELECTED_OFFSET_DEG)
+}
+
+function selectStack(cluster: Cluster, events: GlobeEvent[], centre: { lat: number; lng: number }): void {
+  const { selectedId, selectInStack } = useSelectionStore.getState()
+  const ids = stackIds(cluster.members, events)
+  selectInStack(nextInStack(ids, selectedId), ids)
+  turnTo(centre.lat, centre.lng + SELECTED_OFFSET_DEG)
+}
+
+/** Step the selected stack by one event, as the info panel's buttons and a hand swipe do; false if no stack is selected. */
+export function stepStack(step: 1 | -1): boolean {
+  const { selectedId, stackIds: ids, selectInStack } = useSelectionStore.getState()
+  const at = selectedId === null ? -1 : ids.indexOf(selectedId)
+  if (at < 0) return false
+  selectInStack(ids[(at + step + ids.length) % ids.length], ids)
+  return true
 }
 
 /** A pinch-tap selects only in pinch mode; dwell mode selects by holding still instead. */
@@ -57,8 +80,10 @@ function turnTo(lat: number, lng: number): void {
   globe.setLastInputAt(performance.now())
 }
 
-/** Turns the cluster's centre to face the camera and zooms in far enough to split it. */
-function focusCluster(cluster: Cluster, events: GlobeEvent[]): void {
+type ClusterFocus = { centre: { lat: number; lng: number }; splitAt: number }
+
+/** Where a cluster is centred, and the camera distance at which it would split. */
+function clusterFocus(cluster: Cluster, events: GlobeEvent[]): ClusterFocus {
   const directions = new Float32Array(cluster.members.length * 3)
   let x = 0
   let y = 0
@@ -75,9 +100,12 @@ function focusCluster(cluster: Cluster, events: GlobeEvent[]): void {
   const local: Cluster = { ...cluster, members: cluster.members.map((_, i) => i) }
   const angle = splitAngle(directions, local)
   const { height } = useProjectionStore.getState()
-  const globe = useGlobeStore.getState()
-  const splitAt = distanceToSplit(angle, visualConfig.eventPoints.clusterRadiusPx, CAMERA_FOV, height)
+  return { centre, splitAt: distanceToSplit(angle, visualConfig.eventPoints.clusterRadiusPx, CAMERA_FOV, height) }
+}
 
+/** Turns the cluster's centre to face the camera and zooms in far enough to split it. */
+function focusCluster({ centre, splitAt }: ClusterFocus): void {
+  const globe = useGlobeStore.getState()
   turnTo(centre.lat, centre.lng)
   globe.setDistance(clampDistance(Math.min(globe.distance * MIN_FOCUS_ZOOM, splitAt)))
 }

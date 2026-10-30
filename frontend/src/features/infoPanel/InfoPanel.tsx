@@ -7,6 +7,7 @@ import { prefersReducedMotion } from '../../shared/ui/motion'
 import { GlassPanel } from '../../shared/ui/GlassPanel'
 import { useEventStore } from '../../store/eventStore'
 import { useSelectionStore } from '../../store/selectionStore'
+import { stepStack } from '../selection/selectionActions'
 import { LeaderLine, type LeaderLineHandle } from './LeaderLine'
 import { usePanelAnchor, type PanelAnchor } from './usePanelAnchor'
 
@@ -105,6 +106,8 @@ function OpenPanel({ event, onClose, closing = false, onClosed }: OpenPanelProps
 
   const colour = visualConfig.eventColors[event.category]
   const titleId = `event-${event.id}-title`
+  const stack = useSelectionStore((s) => s.stackIds)
+  const stackAt = stack.indexOf(event.id)
 
   return (
     <>
@@ -139,6 +142,25 @@ function OpenPanel({ event, onClose, closing = false, onClosed }: OpenPanelProps
               <span className="font-medium">{placeLabel(event)}</span>
               <span className="text-haze">{relativeTime(event.timestamp, now)}</span>
             </p>
+
+            {stackAt >= 0 && stack.length > 1 && (
+              <div className="mt-3 flex items-center gap-2 text-sm text-haze">
+                <span className="flex-1">
+                  {stackAt + 1} of {stack.length} stories here
+                </span>
+                {([-1, 1] as const).map((step) => (
+                  <button
+                    key={step}
+                    type="button"
+                    onClick={() => stepStack(step)}
+                    aria-label={step === 1 ? 'Next story here' : 'Previous story here'}
+                    className="grid size-10 place-items-center rounded-lg hover:bg-white/10 hover:text-light"
+                  >
+                    {step === 1 ? '›' : '‹'}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {event.imageUrl && <img src={event.imageUrl} alt="" className="mt-4 aspect-video w-full rounded-lg object-cover" />}
 
