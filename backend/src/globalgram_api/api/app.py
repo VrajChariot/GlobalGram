@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
 
 import httpx
@@ -31,7 +31,7 @@ def create_app(
     settings = settings or Settings()
 
     @asynccontextmanager
-    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         client = httpx.AsyncClient(timeout=settings.http_timeout_seconds, follow_redirects=True)
         active_feeds: Sequence[EventFeed] = (
             feeds
