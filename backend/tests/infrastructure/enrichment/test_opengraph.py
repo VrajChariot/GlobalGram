@@ -3,7 +3,7 @@ import pytest
 import respx
 from conftest import make_event
 
-from globalgram_api.infrastructure.enrichment.opengraph import OpenGraphEnricher
+from infrastructure.enrichment.opengraph import OpenGraphEnricher
 
 
 @pytest.mark.asyncio

@@ -315,12 +315,12 @@ node scripts/build-land-mask.mjs ne_50m_land.geojson public/land-mask.png 2048
 
 ## Backend
 
-`backend/` is a FastAPI service (Python 3.12, [uv](https://docs.astral.sh/uv/), domain-driven layout under `src/globalgram_api/`: `domain`, `application`, `infrastructure`, `api`). It pulls live world events from [GDELT 2.0](https://www.gdeltproject.org/) (15-minute export files; news), [USGS](https://earthquake.usgs.gov/earthquakes/feed/) (earthquakes M2.5+), [GDACS](https://www.gdacs.org/) (disaster alerts) and [NASA EONET](https://eonet.gsfc.nasa.gov/) (storms, floods, wildfires, volcanoes, sea ice). It keeps only events from the last 24 hours in memory, refreshes every 5 minutes, and enriches the top events with the headline, summary and image from each article's Open Graph tags. A restart backfills the last 24 hours on the first refresh.
+`backend/` is a FastAPI service (Python 3.12, [uv](https://docs.astral.sh/uv/), domain-driven layout under `src/`: `domain`, `application`, `infrastructure`, `api`). It pulls live world events from [GDELT 2.0](https://www.gdeltproject.org/) (15-minute export files; news), [USGS](https://earthquake.usgs.gov/earthquakes/feed/) (earthquakes M2.5+), [GDACS](https://www.gdacs.org/) (disaster alerts) and [NASA EONET](https://eonet.gsfc.nasa.gov/) (storms, floods, wildfires, volcanoes, sea ice). It keeps only events from the last 24 hours in memory, refreshes every 5 minutes, and enriches the top events with the headline, summary and image from each article's Open Graph tags. A restart backfills the last 24 hours on the first refresh.
 
 ```bash
 cd backend
 uv sync
-uv run uvicorn globalgram_api.api.app:app --port 8000
+uv run uvicorn api.app:app --app-dir src --port 8000
 ```
 
 | Endpoint | Returns |

@@ -4,9 +4,9 @@ from datetime import datetime
 from conftest import NOW, make_event
 from fastapi.testclient import TestClient
 
-from globalgram_api.api.app import create_app
-from globalgram_api.config import Settings
-from globalgram_api.domain.events.model import Category, Event
+from api.app import create_app
+from config import Settings
+from domain.events.model import Category, Event
 
 
 class FakeFeed:

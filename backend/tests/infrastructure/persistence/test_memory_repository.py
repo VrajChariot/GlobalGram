@@ -2,8 +2,8 @@ from datetime import timedelta
 
 from conftest import NOW, make_event
 
-from globalgram_api.domain.events.model import Category
-from globalgram_api.infrastructure.persistence.memory_repository import InMemoryEventRepository
+from domain.events.model import Category
+from infrastructure.persistence.memory_repository import InMemoryEventRepository
 
 
 async def test_prune_boundary_keeps_exact_cutoff() -> None:

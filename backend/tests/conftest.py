@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from globalgram_api.domain.events.model import Category, Event, GeoPoint
+from domain.events.model import Category, Event, GeoPoint
 
 NOW = datetime(2026, 10, 30, 18, tzinfo=UTC)
 

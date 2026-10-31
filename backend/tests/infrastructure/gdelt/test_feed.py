@@ -7,8 +7,8 @@ import httpx
 import pytest
 import respx
 
-from globalgram_api.domain.events.ports import FeedError
-from globalgram_api.infrastructure.gdelt.feed import GdeltFeed
+from domain.events.ports import FeedError
+from infrastructure.gdelt.feed import GdeltFeed
 
 BASE = "https://gdelt.test/v2"
 NOW = datetime(2026, 10, 30, 18, 7, tzinfo=UTC)  # newest slot is 18:00

@@ -4,11 +4,11 @@ import httpx
 import pytest
 import respx
 
-from globalgram_api.domain.events.model import Category
-from globalgram_api.domain.events.ports import FeedError
-from globalgram_api.infrastructure.hazards.eonet import EonetFeed, parse_eonet
-from globalgram_api.infrastructure.hazards.gdacs import GdacsFeed, parse_gdacs
-from globalgram_api.infrastructure.hazards.usgs import UsgsFeed, parse_usgs
+from domain.events.model import Category
+from domain.events.ports import FeedError
+from infrastructure.hazards.eonet import EonetFeed, parse_eonet
+from infrastructure.hazards.gdacs import GdacsFeed, parse_gdacs
+from infrastructure.hazards.usgs import UsgsFeed, parse_usgs
 
 NOW = datetime(2026, 10, 30, 18, tzinfo=UTC)
 SINCE = datetime(2026, 10, 29, 18, tzinfo=UTC)

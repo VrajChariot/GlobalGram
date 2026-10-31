@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
-from globalgram_api.domain.events.model import Category
-from globalgram_api.infrastructure.gdelt.parser import (
+from domain.events.model import Category
+from infrastructure.gdelt.parser import (
     ACTOR1_NAME,
     ACTOR2_NAME,
     BASE_CODE,

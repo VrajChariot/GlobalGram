@@ -19,7 +19,7 @@ GlobalGram is a gesture-controlled holographic globe that shows live world event
 
 **Patterns to preserve**
 - **Frontend layering** (convention, no lint rule): `core/` is pure TS and imports only `core/`. `store/` imports only `core`. `features/` (React/R3F) may use store, core, infrastructure, shared. Features depend on the `EventSource` interface, never on a concrete source.
-- **Composition roots:** `frontend/src/app/App.tsx` is the only place that picks a concrete `EventSource` (`VITE_EVENT_SOURCE=mock` selects `MockEventSource`). Backend: `create_app(settings, *, feeds, enricher, clock)` in `backend/src/globalgram_api/api/app.py` is the only place that wires adapters, and also the test seam.
+- **Composition roots:** `frontend/src/app/App.tsx` is the only place that picks a concrete `EventSource` (`VITE_EVENT_SOURCE=mock` selects `MockEventSource`). Backend: `create_app(settings, *, feeds, enricher, clock)` in `backend/src/api/app.py` is the only place that wires adapters, and also the test seam.
 - **State:** one zustand store per concern, setters only. Render loops read `useXStore.getState()` (never React state) so hot paths avoid re-renders; use selectors only for data that drives JSX.
 - **Frame order:** `useFrame` hooks that depend on each other use `FRAME_ORDER` (`frontend/src/shared/frameOrder.ts`). Priorities must be `<= 0`, or R3F stops auto-rendering.
 - **Pure state machines:** gesture logic lives in `core/gestures/gestureMachine.ts` (`stepGesture(state, input) -> {state, effects}`); it never touches the globe. All timings and thresholds are in `core/gestures/thresholds.ts`.
@@ -32,7 +32,7 @@ GlobalGram is a gesture-controlled holographic globe that shows live world event
 - `frontend/src/infrastructure/`: the only code touching `getUserMedia`, MediaPipe and event sources.
 - `frontend/src/store/`, `frontend/src/shared/` (config, `FRAME_ORDER`, UI helpers).
 - `frontend/scripts/`: `setup-mediapipe.mjs` (auto-run by `dev`/`build`), `build-land-mask.mjs` (manual).
-- `backend/src/globalgram_api/`: `domain/events/`, `application/`, `infrastructure/{gdelt,hazards,enrichment,persistence}/`, `api/`, `config.py`.
+- `backend/src/`: `domain/events/`, `application/`, `infrastructure/{gdelt,hazards,enrichment,persistence}/`, `api/`, `config.py`.
 - `backend/tests/`: mirrors the source tree.
 
 ## Development Commands
@@ -47,7 +47,7 @@ VITE_EVENT_SOURCE=mock pnpm dev                            # no backend needed
 Backend (run in `backend/`):
 ```bash
 uv sync
-uv run uvicorn globalgram_api.api.app:app --port 8000
+uv run uvicorn api.app:app --app-dir src --port 8000
 uv run pytest -q
 uv run pytest tests/infrastructure/gdelt/test_feed.py::test_old_404_is_permanent_gap -q
 uv run ruff check . && uv run ruff format --check . && uv run mypy
@@ -63,7 +63,7 @@ Health check: `curl localhost:8000/api/health` (`starting` until the first refre
 - `import.meta.env`: `VITE_EVENT_SOURCE`, `VITE_API_BASE_URL`.
 
 **Backend (Python)**
-- Ruff line length 120, rules `E,F,I,UP,B,ASYNC`; mypy `strict` on `globalgram_api` (not tests). Full type hints, `from __future__` not used.
+- Ruff line length 120, rules `E,F,I,UP,B,ASYNC`; mypy `strict` on `src/` (not tests). Full type hints, `from __future__` not used.
 - Domain validation in `__post_init__` raises `ValueError`. Adapters wrap transport failures as `FeedError(f"{name}: {exc}")`; one failing feed never blocks others (`RefreshEvents` records it in `feed_errors`). Per-item parse errors are skipped silently (`except (KeyError, TypeError, ValueError): continue`). Enrichment never raises per item.
 - Pure `parse_*` function + thin async `*Feed` class per source (`infrastructure/hazards/usgs.py`). New source: add a feed class and register it in `create_app`'s default feeds; no domain change.
 - Event ids are prefixed by source (`gdelt-`, `usgs-`, `gdacs-`, `eonet-`). Feeds that need no article enrichment set `enriched=True`.
@@ -78,7 +78,7 @@ Health check: `curl localhost:8000/api/health` (`starting` until the first refre
 - `frontend/src/shared/config/{visualConfig,gestureConfig}.ts`: live-tunable singletons (leva, press `D`).
 - `vercel.json`: Vercel services (`frontend` at `/`, `backend` at `/api/*`); `backend/index.py` is the Vercel entrypoint shim (adds `src/` to `sys.path`).
 - `frontend/vite.config.ts`: `/api` proxy, vitest include (`src/**/*.test.ts` only).
-- `backend/src/globalgram_api/api/app.py`, `application/refresh_events.py`, `domain/events/{model,policies,ports}.py`, `config.py`, `pyproject.toml`.
+- `backend/src/api/app.py`, `application/refresh_events.py`, `domain/events/{model,policies,ports}.py`, `config.py`, `pyproject.toml`.
 
 ## Runtime/Tooling Preferences
 - Frontend: Node 20.19+ or 22.12+, **pnpm** (lockfile `frontend/pnpm-lock.yaml`), Vite 8, TypeScript ~6, ESLint 10, Vitest 5. Run all `pnpm` commands from `frontend/`, not the repo root.

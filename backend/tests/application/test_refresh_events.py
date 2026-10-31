@@ -3,10 +3,10 @@ from datetime import datetime, timedelta
 
 from conftest import NOW, make_event
 
-from globalgram_api.application.refresh_events import FETCH_OVERLAP, RefreshEvents
-from globalgram_api.domain.events.model import Category, Event
-from globalgram_api.domain.events.policies import merge_duplicate, rank
-from globalgram_api.infrastructure.persistence.memory_repository import InMemoryRefreshState
+from application.refresh_events import FETCH_OVERLAP, RefreshEvents
+from domain.events.model import Category, Event
+from domain.events.policies import merge_duplicate, rank
+from infrastructure.persistence.memory_repository import InMemoryRefreshState
 
 
 class FakeRepo:

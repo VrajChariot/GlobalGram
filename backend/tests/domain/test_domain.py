@@ -3,8 +3,8 @@ from datetime import datetime, timedelta
 import pytest
 from conftest import NOW, make_event
 
-from globalgram_api.domain.events.model import GeoPoint
-from globalgram_api.domain.events.policies import is_fresh, merge_duplicate, rank
+from domain.events.model import GeoPoint
+from domain.events.policies import is_fresh, merge_duplicate, rank
 
 
 def test_freshness_boundaries() -> None:

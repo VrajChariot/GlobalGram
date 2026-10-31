@@ -5,4 +5,4 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from globalgram_api.api.app import app as app  # noqa: E402
+from api.app import app as app  # noqa: E402
