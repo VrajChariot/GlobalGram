@@ -346,6 +346,10 @@ On Vercel there is no background loop (`VERCEL` disables the scheduler). The fir
 
 The API sends CORS headers only to origins in `GLOBALGRAM_CORS_ORIGINS` (JSON list of exact `scheme://host[:port]` values, default the local Vite origins) or matching `GLOBALGRAM_CORS_ORIGIN_REGEX` (full-origin match, for preview URLs). Wildcards, paths and match-everything patterns are rejected at startup. Only `GET`, `HEAD` and `OPTIONS` are allowed, with no credentials and no custom request headers. On Vercel the frontend and API share an origin, so no CORS entry is needed.
 
+### Direct browsing
+
+`/api/*` answers `403` when a person opens it in the browser (address bar, link, iframe), detected from the `Sec-Fetch-Mode`, `Sec-Fetch-Site` and `Sec-Fetch-Dest` headers. This only keeps casual visitors out: `curl` and forged headers still work, and the data is public by design because the page's own script reads it. `/api/events` is cached `private` so a shared cache can't replay it past this check. Use `curl` to inspect the API locally.
+
 ## Configuration and tuning
 
 All tunables live in two plain objects that render loops read every frame. Leva's sliders write straight into them, so tuning never re-renders React.

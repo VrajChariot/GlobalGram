@@ -33,7 +33,9 @@ async def list_events(
         await _refresh_if_due(container)
     else:
         background.add_task(_refresh_if_due, container)
-    response.headers["Cache-Control"] = "public, max-age=60"
+    # `private`: a shared cache could replay a stored response to a navigation and skip the browsing guard.
+    response.headers["Cache-Control"] = "private, max-age=60"
+    response.headers["Vary"] = "Sec-Fetch-Mode, Sec-Fetch-Dest, Sec-Fetch-Site"
     categories = frozenset(category) if category else None
     return [EventOut.from_domain(e) for e in await container.list_events(limit, categories)]
 

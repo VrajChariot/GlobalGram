@@ -4,7 +4,9 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
+from api.browsing_guard import block_direct_browsing
 from api.container import Container
 from api.routes import router
 from application.clock import Clock, utc_now
@@ -82,6 +84,7 @@ def create_app(
         allow_credentials=False,
         max_age=600,
     )
+    app.add_middleware(BaseHTTPMiddleware, dispatch=block_direct_browsing)
     app.include_router(router)
     return app
 
