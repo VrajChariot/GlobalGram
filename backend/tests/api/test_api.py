@@ -28,7 +28,7 @@ class PassthroughEnricher:
 
 def build(feeds: list[FakeFeed]) -> TestClient:
     app = create_app(
-        Settings(enable_scheduler=False),
+        Settings(enable_scheduler=False, mongodb_uri=None),
         feeds=feeds,
         enricher=PassthroughEnricher(),
         clock=lambda: NOW,

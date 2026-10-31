@@ -1,3 +1,6 @@
+import os
+
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,4 +17,13 @@ class Settings(BaseSettings):
     enrich_concurrency: int = 16
     http_timeout_seconds: float = 15.0
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
-    enable_scheduler: bool = True
+    # A background loop can't survive between serverless invocations; on Vercel refreshes happen on request instead.
+    enable_scheduler: bool = Field(default_factory=lambda: not os.environ.get("VERCEL"))
+    # Without a URI events live in process memory. The unprefixed name is the one Vercel's Atlas integration injects.
+    mongodb_uri: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "mongodb_uri", "GLOBALGRAM_MONGODB_URI", "Golbalgram_prod_db_MONGODB_URI", "MONGODB_URI"
+        ),
+    )
+    mongodb_database: str = "globalgram"

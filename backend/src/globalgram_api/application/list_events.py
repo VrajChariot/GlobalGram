@@ -9,5 +9,5 @@ class ListRecentEvents:
         self._repository = repository
         self._clock = clock
 
-    def __call__(self, limit: int, categories: frozenset[Category] | None) -> list[Event]:
-        return self._repository.list_recent(self._clock() - MAX_AGE, limit, categories)
+    async def __call__(self, limit: int, categories: frozenset[Category] | None) -> list[Event]:
+        return await self._repository.list_recent(self._clock() - MAX_AGE, limit, categories)

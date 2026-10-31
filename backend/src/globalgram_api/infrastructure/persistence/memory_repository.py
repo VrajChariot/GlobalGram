@@ -1,6 +1,7 @@
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import datetime, timedelta
 
+from globalgram_api.application.refresh_events import RefreshReport
 from globalgram_api.domain.events.model import Category, Event
 from globalgram_api.domain.events.policies import merge_duplicate, rank
 
@@ -9,7 +10,7 @@ class InMemoryEventRepository:
     def __init__(self) -> None:
         self._events: dict[str, Event] = {}
 
-    def upsert_many(self, events: Iterable[Event]) -> int:
+    async def upsert_many(self, events: Iterable[Event]) -> int:
         added = 0
         for event in events:
             existing = self._events.get(event.id)
@@ -20,13 +21,13 @@ class InMemoryEventRepository:
                 self._events[event.id] = merge_duplicate(existing, event)
         return added
 
-    def prune_older_than(self, cutoff: datetime) -> int:
+    async def prune_older_than(self, cutoff: datetime) -> int:
         stale = [i for i, e in self._events.items() if e.occurred_at < cutoff]
         for i in stale:
             del self._events[i]
         return len(stale)
 
-    def list_recent(self, since: datetime, limit: int, categories: frozenset[Category] | None) -> list[Event]:
+    async def list_recent(self, since: datetime, limit: int, categories: frozenset[Category] | None) -> list[Event]:
         matching = (
             e
             for e in self._events.values()
@@ -34,8 +35,26 @@ class InMemoryEventRepository:
         )
         return rank(matching)[:limit]
 
-    def unenriched_top(self, limit: int) -> list[Event]:
+    async def unenriched_top(self, limit: int) -> list[Event]:
         return rank(e for e in self._events.values() if not e.enriched)[:limit]
 
-    def count(self) -> int:
+    async def count(self) -> int:
         return len(self._events)
+
+
+class InMemoryRefreshState:
+    def __init__(self) -> None:
+        self._report: RefreshReport | None = None
+        self._leased_until: datetime | None = None
+
+    async def load(self) -> RefreshReport | None:
+        return self._report
+
+    async def save(self, report: RefreshReport) -> None:
+        self._report = report
+
+    async def acquire_lease(self, now: datetime, ttl: timedelta) -> bool:
+        if self._leased_until is not None and self._leased_until > now:
+            return False
+        self._leased_until = now + ttl
+        return True

@@ -3,16 +3,17 @@ from datetime import datetime, timedelta
 
 from conftest import NOW, make_event
 
-from globalgram_api.application.refresh_events import RefreshEvents
+from globalgram_api.application.refresh_events import FETCH_OVERLAP, RefreshEvents
 from globalgram_api.domain.events.model import Category, Event
 from globalgram_api.domain.events.policies import merge_duplicate, rank
+from globalgram_api.infrastructure.persistence.memory_repository import InMemoryRefreshState
 
 
 class FakeRepo:
     def __init__(self) -> None:
         self.items: dict[str, Event] = {}
 
-    def upsert_many(self, events: Iterable[Event]) -> int:
+    async def upsert_many(self, events: Iterable[Event]) -> int:
         new = 0
         for e in events:
             if e.id in self.items:
@@ -22,19 +23,19 @@ class FakeRepo:
                 new += 1
         return new
 
-    def prune_older_than(self, cutoff: datetime) -> int:
+    async def prune_older_than(self, cutoff: datetime) -> int:
         old = [k for k, e in self.items.items() if e.occurred_at < cutoff]
         for k in old:
             del self.items[k]
         return len(old)
 
-    def list_recent(self, since: datetime, limit: int, categories: frozenset[Category] | None) -> list[Event]:
+    async def list_recent(self, since: datetime, limit: int, categories: frozenset[Category] | None) -> list[Event]:
         return rank(e for e in self.items.values() if e.occurred_at >= since)[:limit]
 
-    def unenriched_top(self, limit: int) -> list[Event]:
+    async def unenriched_top(self, limit: int) -> list[Event]:
         return rank(e for e in self.items.values() if not e.enriched)[:limit]
 
-    def count(self) -> int:
+    async def count(self) -> int:
         return len(self.items)
 
 
@@ -43,8 +44,10 @@ class FakeFeed:
         self.name = name
         self._events = events or []
         self._error = error
+        self.since: list[datetime] = []
 
     async def fetch_since(self, since: datetime) -> list[Event]:
+        self.since.append(since)
         if self._error:
             raise self._error
         return self._events
@@ -61,7 +64,7 @@ class FakeEnricher:
 
 def build(feeds: list[FakeFeed], limit: int = 10) -> tuple[RefreshEvents, FakeRepo, FakeEnricher]:
     repo, enricher = FakeRepo(), FakeEnricher()
-    return RefreshEvents(feeds, repo, enricher, lambda: NOW, limit), repo, enricher
+    return RefreshEvents(feeds, repo, enricher, lambda: NOW, limit, InMemoryRefreshState(), 300), repo, enricher
 
 
 async def test_failing_feed_reported_other_stored() -> None:
@@ -86,3 +89,27 @@ async def test_enrich_limit_in_rank_order() -> None:
     report = await refresh()
     assert [e.id for e in enricher.received] == ["e4", "e3"]
     assert report.enriched == 2
+
+
+async def test_second_refresh_fetches_only_since_previous_run_with_overlap() -> None:
+    feed = FakeFeed("f", [make_event()])
+    refresh, _, _ = build([feed])
+    await refresh()
+    await refresh()
+    assert feed.since == [NOW - timedelta(hours=24), NOW - FETCH_OVERLAP]
+
+
+async def test_refresh_after_feed_failure_refetches_full_window() -> None:
+    feed = FakeFeed("f", error=RuntimeError("boom"))
+    refresh, _, _ = build([feed])
+    await refresh()
+    await refresh()
+    assert feed.since == [NOW - timedelta(hours=24)] * 2
+
+
+async def test_refresh_if_due_skips_recent_refresh() -> None:
+    feed = FakeFeed("f", [make_event()])
+    refresh, _, _ = build([feed])
+    assert await refresh.refresh_if_due() is not None
+    assert await refresh.refresh_if_due() is None
+    assert len(feed.since) == 1

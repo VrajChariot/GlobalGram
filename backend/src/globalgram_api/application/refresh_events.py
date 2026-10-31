@@ -2,7 +2,8 @@ import asyncio
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
+from typing import Protocol
 
 from globalgram_api.application.clock import Clock
 from globalgram_api.domain.events.model import Event
@@ -23,6 +24,21 @@ class RefreshReport:
     feed_errors: dict[str, str]
 
 
+# Slots younger than this may still 404 on the GDELT side, so incremental fetches re-cover this window.
+FETCH_OVERLAP = timedelta(hours=2)
+LEASE_TTL = timedelta(minutes=5)
+
+
+class RefreshStateStore(Protocol):
+    """Shared refresh bookkeeping so separate server instances agree on when data was last refreshed."""
+
+    async def load(self) -> RefreshReport | None: ...
+
+    async def save(self, report: RefreshReport) -> None: ...
+
+    async def acquire_lease(self, now: datetime, ttl: timedelta) -> bool: ...
+
+
 class RefreshEvents:
     def __init__(
         self,
@@ -31,17 +47,38 @@ class RefreshEvents:
         enricher: EventEnricher,
         clock: Clock,
         enrich_limit: int,
+        state: RefreshStateStore,
+        interval_seconds: float,
     ) -> None:
         self._feeds = feeds
         self._repository = repository
         self._enricher = enricher
         self._clock = clock
         self._enrich_limit = enrich_limit
+        self._state = state
+        self._interval = timedelta(seconds=interval_seconds)
+
+    async def last_report(self) -> RefreshReport | None:
+        return await self._state.load()
+
+    async def refresh_if_due(self) -> RefreshReport | None:
+        """Refresh unless a recent refresh exists or another instance holds the lease."""
+        now = self._clock()
+        previous = await self._state.load()
+        if previous is not None and now - previous.finished_at < self._interval:
+            return None
+        if not await self._state.acquire_lease(now, LEASE_TTL):
+            return None
+        return await self()
 
     async def __call__(self) -> RefreshReport:
         now = self._clock()
         since = now - MAX_AGE
-        results = await asyncio.gather(*(f.fetch_since(since) for f in self._feeds), return_exceptions=True)
+        previous = await self._state.load()
+        fetch_since = since
+        if previous is not None and not previous.feed_errors:
+            fetch_since = max(since, previous.started_at - FETCH_OVERLAP)
+        results = await asyncio.gather(*(f.fetch_since(fetch_since) for f in self._feeds), return_exceptions=True)
         feed_errors: dict[str, str] = {}
         fresh: list[Event] = []
         for feed, result in zip(self._feeds, results, strict=True):
@@ -52,17 +89,19 @@ class RefreshEvents:
                 logger.warning("feed %s failed: %s", feed.name, feed_errors[feed.name])
             else:
                 fresh.extend(e for e in result if is_fresh(e, now))
-        added = self._repository.upsert_many(fresh)
-        pruned = self._repository.prune_older_than(since)
-        pending = self._repository.unenriched_top(self._enrich_limit)
+        added = await self._repository.upsert_many(fresh)
+        pruned = await self._repository.prune_older_than(since)
+        pending = await self._repository.unenriched_top(self._enrich_limit)
         enriched_events = await self._enricher.enrich(pending)
-        self._repository.upsert_many(enriched_events)
-        return RefreshReport(
+        await self._repository.upsert_many(enriched_events)
+        report = RefreshReport(
             started_at=now,
             finished_at=self._clock(),
             added=added,
             pruned=pruned,
             enriched=len(enriched_events),
-            total=self._repository.count(),
+            total=await self._repository.count(),
             feed_errors=feed_errors,
         )
+        await self._state.save(report)
+        return report

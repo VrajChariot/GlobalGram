@@ -338,7 +338,9 @@ Checks: `uv run pytest`, `uv run ruff check .`, `uv run ruff format --check .`, 
 
 `vercel.json` defines two [Vercel services](https://vercel.com/docs/services) in one project: `frontend` (Vite, served at `/`) and `backend` (FastAPI, served at `/api/*`, entrypoint `backend/index.py`). The browser calls `/api/events` on the same domain, so no CORS or `VITE_API_BASE_URL` is needed, and the services don't call each other (no bindings). Test locally with `vercel dev`.
 
-The backend keeps events in memory and refreshes them from a background task, which suits a long-running server better than serverless functions: each function instance has its own store and starts empty.
+Events are stored in MongoDB when `GLOBALGRAM_MONGODB_URI` (or Vercel's `MONGODB_URI` / `<prefix>_MONGODB_URI`) is set; locally it reads `backend/.env`. Without a URI the backend falls back to process memory. `GLOBALGRAM_MONGODB_DATABASE` (default `globalgram`) picks the database.
+
+On Vercel there is no background loop (`VERCEL` disables the scheduler). The first `/api/events` call with an empty database blocks on a refresh; later calls serve from MongoDB and trigger a refresh after responding once the last one is over `GLOBALGRAM_REFRESH_INTERVAL_SECONDS` old. A lease document in MongoDB keeps concurrent instances from refreshing together. Atlas must allow connections from Vercel (network access list).
 
 ## Configuration and tuning
 
