@@ -1,6 +1,6 @@
 from conftest import make_event
 
-from globalgram_api.infrastructure.persistence.mongo import doc_to_event, event_to_doc
+from globalgram_api.infrastructure.persistence.mongo.mapping import doc_to_event, event_to_doc
 
 
 def test_event_survives_document_round_trip() -> None:

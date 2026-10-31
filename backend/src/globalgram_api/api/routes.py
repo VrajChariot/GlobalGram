@@ -1,21 +1,19 @@
 import logging
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Response
 
+from globalgram_api.api.container import Container
 from globalgram_api.api.dependencies import get_container
 from globalgram_api.api.schemas import EventOut, HealthOut
 from globalgram_api.domain.events.model import Category
-
-if TYPE_CHECKING:
-    from globalgram_api.api.app import Container
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
 
 
-async def _refresh_if_due(container: "Container") -> None:
+async def _refresh_if_due(container: Container) -> None:
     try:
         await container.refresh.refresh_if_due()
     except Exception:
@@ -26,7 +24,7 @@ async def _refresh_if_due(container: "Container") -> None:
 async def list_events(
     response: Response,
     background: BackgroundTasks,
-    container: Annotated["Container", Depends(get_container)],
+    container: Annotated[Container, Depends(get_container)],
     limit: Annotated[int, Query(ge=1, le=5000)] = 2000,
     category: Annotated[list[Category] | None, Query()] = None,
 ) -> list[EventOut]:
@@ -41,7 +39,7 @@ async def list_events(
 
 
 @router.get("/health", response_model=HealthOut, response_model_by_alias=True)
-async def health(container: Annotated["Container", Depends(get_container)]) -> HealthOut:
+async def health(container: Annotated[Container, Depends(get_container)]) -> HealthOut:
     scheduler = container.scheduler
     report = await container.refresh.last_report()
     error = scheduler.last_error
