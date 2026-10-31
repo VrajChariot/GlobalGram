@@ -72,7 +72,16 @@ def create_app(
             await persistence.close()
 
     app = FastAPI(title="GlobalGram API", lifespan=lifespan)
-    app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_methods=["GET"])
+    # Read-only public API: no cookies or credentials, no custom request headers, preflights cached for 10 minutes.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_origin_regex=settings.cors_origin_regex,
+        allow_methods=["GET", "HEAD", "OPTIONS"],
+        allow_headers=[],
+        allow_credentials=False,
+        max_age=600,
+    )
     app.include_router(router)
     return app
 

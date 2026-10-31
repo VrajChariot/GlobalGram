@@ -342,6 +342,10 @@ Events are stored in MongoDB when `GLOBALGRAM_MONGODB_URI` (or Vercel's `MONGODB
 
 On Vercel there is no background loop (`VERCEL` disables the scheduler). The first `/api/events` call with an empty database blocks on a refresh; later calls serve from MongoDB and trigger a refresh after responding once the last one is over `GLOBALGRAM_REFRESH_INTERVAL_SECONDS` old. A lease document in MongoDB keeps concurrent instances from refreshing together. Atlas must allow connections from Vercel (network access list).
 
+### CORS
+
+The API sends CORS headers only to origins in `GLOBALGRAM_CORS_ORIGINS` (JSON list of exact `scheme://host[:port]` values, default the local Vite origins) or matching `GLOBALGRAM_CORS_ORIGIN_REGEX` (full-origin match, for preview URLs). Wildcards, paths and match-everything patterns are rejected at startup. Only `GET`, `HEAD` and `OPTIONS` are allowed, with no credentials and no custom request headers. On Vercel the frontend and API share an origin, so no CORS entry is needed.
+
 ## Configuration and tuning
 
 All tunables live in two plain objects that render loops read every frame. Leva's sliders write straight into them, so tuning never re-renders React.
