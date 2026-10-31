@@ -334,6 +334,12 @@ USGS, GDACS and EONET supply the `disaster` events and EONET's sea-ice and water
 
 Checks: `uv run pytest`, `uv run ruff check .`, `uv run ruff format --check .`, `uv run mypy`.
 
+## Deploying on Vercel
+
+`vercel.json` defines two [Vercel services](https://vercel.com/docs/services) in one project: `frontend` (Vite, served at `/`) and `backend` (FastAPI, served at `/api/*`, entrypoint `backend/index.py`). The browser calls `/api/events` on the same domain, so no CORS or `VITE_API_BASE_URL` is needed, and the services don't call each other (no bindings). Test locally with `vercel dev`.
+
+The backend keeps events in memory and refreshes them from a background task, which suits a long-running server better than serverless functions: each function instance has its own store and starts empty.
+
 ## Configuration and tuning
 
 All tunables live in two plain objects that render loops read every frame. Leva's sliders write straight into them, so tuning never re-renders React.

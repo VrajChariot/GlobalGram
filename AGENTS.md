@@ -76,6 +76,7 @@ Health check: `curl localhost:8000/api/health` (`starting` until the first refre
 - `frontend/src/features/selection/selectionActions.ts`: select / cluster-zoom / stack stepping logic.
 - `frontend/src/core/gestures/{gestureMachine,thresholds,GestureState}.ts`, `core/hands/handFeatures.ts`: gesture detection (thumbs-up close, palm swipe, pinch tap/drag, two-hand zoom).
 - `frontend/src/shared/config/{visualConfig,gestureConfig}.ts`: live-tunable singletons (leva, press `D`).
+- `vercel.json`: Vercel services (`frontend` at `/`, `backend` at `/api/*`); `backend/index.py` is the Vercel entrypoint shim (adds `src/` to `sys.path`).
 - `frontend/vite.config.ts`: `/api` proxy, vitest include (`src/**/*.test.ts` only).
 - `backend/src/globalgram_api/api/app.py`, `application/refresh_events.py`, `domain/events/{model,policies,ports}.py`, `config.py`, `pyproject.toml`.
 
