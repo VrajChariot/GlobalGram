@@ -33,11 +33,10 @@ class InMemoryEventRepository:
         matching = (
             e
             for e in self._events.values()
-            if e.occurred_at >= since
-            and (categories is None or e.category in categories)
-            and (bbox is None or bbox.contains(e.location))
+            if e.occurred_at >= since and (categories is None or e.category in categories)
         )
-        return rank(matching)[:limit]
+        top = rank(matching)[:limit]
+        return top if bbox is None else [e for e in top if bbox.contains(e.location)]
 
     async def unenriched_top(self, limit: int) -> list[Event]:
         return rank(e for e in self._events.values() if not e.enriched)[:limit]
