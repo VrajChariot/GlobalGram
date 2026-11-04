@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from conftest import NOW, make_event
 
-from domain.events.model import Category
+from domain.events.model import BoundingBox, Category, GeoPoint
 from infrastructure.persistence.memory_repository import InMemoryEventRepository
 
 
@@ -53,3 +53,17 @@ async def test_unenriched_top_excludes_enriched() -> None:
     )
     assert [e.id for e in await repo.unenriched_top(10)] == ["c", "b"]
     assert [e.id for e in await repo.unenriched_top(1)] == ["c"]
+
+
+async def test_bbox_filter_includes_boxes_crossing_the_antimeridian() -> None:
+    repo = InMemoryEventRepository()
+    await repo.upsert_many(
+        [
+            make_event(id="fiji", location=GeoPoint(-18, 178)),
+            make_event(id="samoa", location=GeoPoint(-14, -172)),
+            make_event(id="tokyo"),
+        ]
+    )
+    pacific = BoundingBox(min_lng=170, min_lat=-30, max_lng=-160, max_lat=0)
+    got = await repo.list_recent(NOW - timedelta(hours=24), 10, None, pacific)
+    assert {e.id for e in got} == {"fiji", "samoa"}

@@ -2,7 +2,7 @@ from collections.abc import Iterable, Sequence
 from datetime import datetime
 from typing import Protocol
 
-from domain.events.model import Category, Event
+from domain.events.model import BoundingBox, Category, Event
 
 
 class FeedError(Exception):
@@ -24,7 +24,9 @@ class EventRepository(Protocol):
 
     async def prune_older_than(self, cutoff: datetime) -> int: ...
 
-    async def list_recent(self, since: datetime, limit: int, categories: frozenset[Category] | None) -> list[Event]: ...
+    async def list_recent(
+        self, since: datetime, limit: int, categories: frozenset[Category] | None, bbox: BoundingBox | None
+    ) -> list[Event]: ...
 
     async def unenriched_top(self, limit: int) -> list[Event]: ...
 

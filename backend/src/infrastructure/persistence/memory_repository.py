@@ -2,7 +2,7 @@ from collections.abc import Iterable
 from datetime import datetime, timedelta
 
 from application.refresh_events import RefreshReport
-from domain.events.model import Category, Event
+from domain.events.model import BoundingBox, Category, Event
 from domain.events.policies import merge_duplicate, rank
 
 
@@ -27,11 +27,15 @@ class InMemoryEventRepository:
             del self._events[i]
         return len(stale)
 
-    async def list_recent(self, since: datetime, limit: int, categories: frozenset[Category] | None) -> list[Event]:
+    async def list_recent(
+        self, since: datetime, limit: int, categories: frozenset[Category] | None, bbox: BoundingBox | None = None
+    ) -> list[Event]:
         matching = (
             e
             for e in self._events.values()
-            if e.occurred_at >= since and (categories is None or e.category in categories)
+            if e.occurred_at >= since
+            and (categories is None or e.category in categories)
+            and (bbox is None or bbox.contains(e.location))
         )
         return rank(matching)[:limit]
 

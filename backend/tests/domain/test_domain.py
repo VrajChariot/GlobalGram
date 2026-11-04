@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 from conftest import NOW, make_event
 
-from domain.events.model import GeoPoint
+from domain.events.model import BoundingBox, GeoPoint
 from domain.events.policies import is_fresh, merge_duplicate, rank
 
 
@@ -63,3 +63,22 @@ def test_event_invalid(overrides: dict[str, object]) -> None:
 def test_with_enrichment_keeps_none() -> None:
     e = make_event(summary="old").with_enrichment("T", None, None)
     assert (e.title, e.summary, e.enriched) == ("T", "old", True)
+
+
+def test_bounding_box_contains_points_inside_only() -> None:
+    box = BoundingBox(min_lng=10, min_lat=40, max_lng=20, max_lat=50)
+    assert box.contains(GeoPoint(45, 15))
+    assert not box.contains(GeoPoint(45, 25))
+    assert not box.contains(GeoPoint(55, 15))
+
+
+def test_bounding_box_rejects_inverted_latitudes() -> None:
+    with pytest.raises(ValueError):
+        BoundingBox(min_lng=0, min_lat=10, max_lng=5, max_lat=-10)
+
+
+def test_bounding_box_crossing_antimeridian() -> None:
+    box = BoundingBox(min_lng=170, min_lat=-20, max_lng=-170, max_lat=20)
+    assert box.contains(GeoPoint(0, 175))
+    assert box.contains(GeoPoint(0, -175))
+    assert not box.contains(GeoPoint(0, 0))

@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from api.app import create_app
 from config import Settings
-from domain.events.model import Category, Event
+from domain.events.model import Category, Event, GeoPoint
 
 
 class FakeFeed:
@@ -79,3 +79,14 @@ def test_health_transitions() -> None:
         body = client.get("/api/health").json()
         assert body["status"] == "degraded"
         assert body["feedErrors"] == {"bad": "boom"}
+
+
+def test_bbox_filters_events_and_rejects_garbage() -> None:
+    tokyo = make_event(id="tokyo")
+    paris = make_event(id="paris", location=GeoPoint(48.85, 2.35))
+    with build([FakeFeed(events=[tokyo, paris])]) as client:
+        client.portal.call(client.app.state.container.refresh)  # type: ignore[attr-defined]
+        got = client.get("/api/events?bbox=130,30,150,40").json()
+        assert [e["id"] for e in got] == ["tokyo"]
+        assert client.get("/api/events?bbox=1,2,3").status_code == 422
+        assert client.get("/api/events?bbox=0,50,10,40").status_code == 422

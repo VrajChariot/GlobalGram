@@ -56,3 +56,26 @@ class Event:
             image_url=self.image_url if image_url is None else image_url,
             enriched=True,
         )
+
+
+@dataclass(frozen=True, slots=True)
+class BoundingBox:
+    """Axis-aligned geographic box. `min_lng > max_lng` means the box crosses the antimeridian."""
+
+    min_lng: float
+    min_lat: float
+    max_lng: float
+    max_lat: float
+
+    def __post_init__(self) -> None:
+        GeoPoint(self.min_lat, self.min_lng)
+        GeoPoint(self.max_lat, self.max_lng)
+        if self.min_lat > self.max_lat:
+            raise ValueError("min_lat must not exceed max_lat")
+
+    def contains(self, point: GeoPoint) -> bool:
+        if not self.min_lat <= point.lat <= self.max_lat:
+            return False
+        if self.min_lng <= self.max_lng:
+            return self.min_lng <= point.lng <= self.max_lng
+        return point.lng >= self.min_lng or point.lng <= self.max_lng

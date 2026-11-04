@@ -29,7 +29,9 @@ class FakeRepo:
             del self.items[k]
         return len(old)
 
-    async def list_recent(self, since: datetime, limit: int, categories: frozenset[Category] | None) -> list[Event]:
+    async def list_recent(
+        self, since: datetime, limit: int, categories: frozenset[Category] | None, bbox: object = None
+    ) -> list[Event]:
         return rank(e for e in self.items.values() if e.occurred_at >= since)[:limit]
 
     async def unenriched_top(self, limit: int) -> list[Event]:

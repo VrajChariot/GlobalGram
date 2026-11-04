@@ -6,7 +6,7 @@ from pymongo import ASCENDING, DESCENDING, ReplaceOne
 from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.asynchronous.database import AsyncDatabase
 
-from domain.events.model import Category, Event
+from domain.events.model import BoundingBox, Category, Event
 from domain.events.policies import merge_duplicate
 from infrastructure.persistence.mongo.mapping import doc_to_event, event_to_doc
 
@@ -40,10 +40,15 @@ class MongoEventRepository:
         result = await self._events.delete_many({"occurred_at": {"$lt": cutoff}})
         return result.deleted_count
 
-    async def list_recent(self, since: datetime, limit: int, categories: frozenset[Category] | None) -> list[Event]:
+    async def list_recent(
+        self, since: datetime, limit: int, categories: frozenset[Category] | None, bbox: BoundingBox | None = None
+    ) -> list[Event]:
         query: dict[str, Any] = {"occurred_at": {"$gte": since}}
         if categories is not None:
             query["category"] = {"$in": [c.value for c in categories]}
+        if bbox is not None:
+            query["lat"] = {"$gte": bbox.min_lat, "$lte": bbox.max_lat}
+            query["lng"] = {"$gte": bbox.min_lng, "$lte": bbox.max_lng}
         cursor = self._events.find(query).sort(_RANK_SORT).limit(limit)
         return [doc_to_event(doc) async for doc in cursor]
 
