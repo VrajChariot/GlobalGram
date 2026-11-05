@@ -6,6 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query, Response
 from api.container import Container
 from api.dependencies import get_container
 from api.schemas import EventOut, HealthOut
+from application.event_stats import ComputeEventStats
 from domain.events.model import Category
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,12 @@ async def list_events(
     response.headers["Vary"] = "Sec-Fetch-Mode, Sec-Fetch-Dest, Sec-Fetch-Site"
     categories = frozenset(category) if category else None
     return [EventOut.from_domain(e) for e in await container.list_events(limit, categories)]
+
+
+@router.get("/stats")
+async def stats(container: Annotated[Container, Depends(get_container)]) -> dict[str, object]:
+    result = await ComputeEventStats(container.repository)()
+    return {"total": result.total, "last_hour": result.last_hour, "by_category": result.by_category}
 
 
 @router.get("/health", response_model=HealthOut, response_model_by_alias=True)
