@@ -1,10 +1,10 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from conftest import NOW, make_event
 
 from domain.events.model import GeoPoint
-from domain.events.policies import is_fresh, merge_duplicate, rank
+from domain.events.policies import has_web_source, is_fresh, merge_duplicate, rank
 
 
 def test_freshness_boundaries() -> None:
@@ -63,3 +63,10 @@ def test_event_invalid(overrides: dict[str, object]) -> None:
 def test_with_enrichment_keeps_none() -> None:
     e = make_event(summary="old").with_enrichment("T", None, None)
     assert (e.title, e.summary, e.enriched) == ("T", "old", True)
+
+
+def test_has_web_source_requires_http_scheme() -> None:
+    fresh = datetime.now(UTC)
+    assert has_web_source(make_event(source_url="https://example.com/a", occurred_at=fresh))
+    assert not has_web_source(make_event(source_url="ftp://example.com/a", occurred_at=fresh))
+    assert not has_web_source(make_event(source_url=None, occurred_at=fresh))

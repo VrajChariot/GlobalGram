@@ -9,6 +9,7 @@ class Category(StrEnum):
     DISASTER = "disaster"
     ECONOMY = "economy"
     SCIENCE = "science"
+    HEALTH = "health"
     OTHER = "other"
 
 

@@ -2,6 +2,8 @@ from collections.abc import Iterable
 from dataclasses import replace
 from datetime import datetime, timedelta
 
+import httpx
+
 from domain.events.model import Event
 
 MAX_AGE = timedelta(hours=24)
@@ -22,3 +24,10 @@ def merge_duplicate(existing: Event, incoming: Event) -> Event:
 
 def rank(events: Iterable[Event]) -> list[Event]:
     return sorted(events, key=lambda e: (-e.importance, -e.occurred_at.timestamp(), e.id))
+
+
+def has_web_source(event: Event) -> bool:
+    """True when the event links to an http(s) article."""
+    if not event.source_url:
+        return False
+    return httpx.URL(event.source_url).scheme in {"http", "https"}

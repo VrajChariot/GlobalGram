@@ -40,7 +40,7 @@ def parse_usgs(data: dict[str, Any]) -> list[Event]:
                     enriched=True,
                 )
             )
-        except (KeyError, TypeError, ValueError):
+        except Exception:
             continue
     return events
 
