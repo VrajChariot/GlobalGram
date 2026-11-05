@@ -24,8 +24,8 @@ class RefreshReport:
     feed_errors: dict[str, str]
 
 
-# Slots younger than this may still 404 on the GDELT side, so incremental fetches re-cover this window.
-FETCH_OVERLAP = timedelta(hours=2)
+# Incremental fetches start this far before the previous run, so slots published late are picked up on the next run.
+FETCH_OVERLAP = timedelta(minutes=30)
 LEASE_TTL = timedelta(minutes=5)
 
 
